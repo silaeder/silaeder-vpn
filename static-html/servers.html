@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <title>Silaeder Vpn</title>
+    <meta name="theme-color" content="#ffd25e">
+    <link rel="stylesheet" href="assets/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="assets/fonts/ionicons.min.css">
+    <link rel="stylesheet" href="assets/css/Article-List.css">
+    <link rel="stylesheet" href="assets/css/Contact-Form-Clean.css">
+    <link rel="stylesheet" href="assets/css/Login-Form-Dark.css">
+    <link rel="stylesheet" href="assets/css/Navigation-Clean.css">
+    <link rel="stylesheet" href="assets/css/Navigation-with-Button.css">
+    <link rel="stylesheet" href="assets/css/Registration-Form-with-Photo.css">
+    <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+
+<body>
+    <nav class="navbar navbar-light navbar-expand-lg navigation-clean">
+        <div class="container"><a class="navbar-brand" href="#">Silaeder VPN</a><button data-bs-toggle="collapse" class="navbar-toggler" data-bs-target="#navcol-1"><span class="visually-hidden">Toggle navigation</span><span class="navbar-toggler-icon"></span></button>
+            <div class="collapse navbar-collapse" id="navcol-1">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link active" href="#">Серверы</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/dashboard">Панель управления</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/contact">Поддержка</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <section class="article-list">
+        <div class="container">
+            <div class="intro">
+                <h2 class="text-center">Наши VPN Серверы</h2>
+                <p class="text-center">Скопируйте данные или скачайте готовый .conf файл</p>
+            </div>
+            <div class="row articles">
+                <div class="col-sm-6 col-md-4 item" style="min-height: 0px;padding-top: 20px;padding-bottom: 20px;">
+                    <section style="padding-top: 10px;padding-bottom: 10px;">
+                        <h4 class="text-center name">{{ server.info }}</h4>
+                        <div class="row text-center">
+                            <div class="col"><code>{{ server.address }}</code></div>
+                        </div>
+                        <div class="row text-center">
+                            <div class="col"><code>{{ server.public_key }}</code></div>
+                        </div>
+                    </section>
+                    <form style="margin-top: 15px;padding-bottom: 10px;" action="/server_config" method="post"><input class="form-control" type="hidden" name="id" value="{{ server.id }}"><button class="btn btn-outline-primary text-center" type="submit">Скачать конфиг</button></form>
+                </div>
+            </div>
+        </div>
+    </section>
+    <script src="assets/bootstrap/js/bootstrap.min.js"></script>
+</body>
+
+</html>

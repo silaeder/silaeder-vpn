@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <title>Silaeder Vpn</title>
+    <meta name="theme-color" content="#ffd25e">
+    <link rel="icon" type="image/jpeg" sizes="640x426" href="assets/img/loft.jpg">
+    <link rel="icon" type="image/jpeg" sizes="640x426" href="assets/img/building.jpg">
+    <link rel="stylesheet" href="assets/bootstrap/css/bootstrap.min.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="assets/fonts/ionicons.min.css">
+    <link rel="stylesheet" href="assets/css/Article-List.css">
+    <link rel="stylesheet" href="assets/css/Contact-Form-Clean.css">
+    <link rel="stylesheet" href="assets/css/Login-Form-Dark.css">
+    <link rel="stylesheet" href="assets/css/Navigation-Clean.css">
+    <link rel="stylesheet" href="assets/css/Navigation-with-Button.css">
+    <link rel="stylesheet" href="assets/css/Registration-Form-with-Photo.css">
+    <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+
+<body>
+    <section class="login-dark">
+        <form method="post" action="/auth/login">
+            <h2 class="visually-hidden">Login Form</h2>
+            <div class="illustration"><i class="icon ion-ios-locked-outline"></i></div>
+            <div class="mb-3"><input class="form-control" type="email" name="email" placeholder="Email"></div>
+            <div class="mb-3"><input class="form-control" type="password" name="password" placeholder="Пароль"></div>
+            <div class="text-center mb-3">{% if flash %}
+<label class="form-label" style="font-size: 12px;color: var(--bs-red);">Неправильный email или пароль</label>
+{% endif %}</div>
+            <div class="mb-3"><button class="btn btn-primary d-block w-100" type="submit">Войти</button></div><a class="forgot" href="/contact">Не можете войти?</a>
+        </form>
+    </section>
+    <script src="assets/bootstrap/js/bootstrap.min.js"></script>
+</body>
+
+</html>
