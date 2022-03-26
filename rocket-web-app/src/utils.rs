@@ -88,7 +88,7 @@ pub async fn validate(cookies: &CookieJar<'_>, conn: &DbConn) -> Result<User, ()
             // token exitst => validate credentials
             if Session::validate(uuid.to_owned(), token.to_owned(), conn).await {
                 // user authenticated => get user
-                match User::get_user(uuid.to_owned(), conn).await {
+                match User::get_user_by_uuid(uuid.to_owned(), conn).await {
                     Ok(u) => {
                         // user exist => return user
                         Ok(u)

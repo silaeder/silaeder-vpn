@@ -1,4 +1,4 @@
-use rocket::serde::Serialize;
+use rocket::serde::{Serialize, Deserialize};
 use diesel::{self, prelude::*};
 
 mod schema {
@@ -6,7 +6,7 @@ mod schema {
         users {
             id -> Nullable<Integer>,
             name -> Text,
-            custom_id -> Text,
+            username -> Text,
             email -> Text,
             hashed_password -> Text,
             permission -> Integer,
@@ -24,13 +24,13 @@ use crate::session::Session;
 use crate::utils::{hash_password, validate_password};
 use uuid::Uuid;
 
-#[derive(QueryableByName, Serialize, Queryable, Insertable, Debug, Clone)]
+#[derive(QueryableByName, Serialize, Deserialize, Queryable, Insertable, Debug, Clone)]
 #[serde(crate = "rocket::serde")]
 #[table_name="users"]
 pub struct User {
     pub id: Option<i32>,
     pub name: String,
-    pub custom_id: String,
+    pub username: String,
     pub email: String,
     pub hashed_password: String,
     pub permission: i32,
@@ -41,7 +41,7 @@ pub struct User {
 #[derive(Debug, FromForm)]
 pub struct UserData {
     pub name: String,
-    pub custom_id: String,
+    pub username: String,
     pub email: String,
     pub password: String,
     pub permission: i32,
@@ -53,8 +53,22 @@ pub struct UserLoginData {
     pub password: String,
 }
 
+#[derive(Debug, FromForm, Clone)]
+pub struct UserQuery {
+    pub name: String,
+    pub username: String,
+    pub email: String,
+    pub uuid: String,
+}
+
 
 impl User {
+    pub async fn get_all(conn: &DbConn) -> Vec<User> {
+        let users: Vec<User> = conn.run(move |c| {
+            all_users.load::<User>(c).unwrap()
+        }).await;
+        users
+    }
     pub async fn add(user_data: UserData, conn: &DbConn) -> Result<String, ()> {
         let user_uuid = Uuid::new_v4().to_string();
         let user_uuid_copy = user_uuid.to_owned();
@@ -62,8 +76,8 @@ impl User {
             let u = User { 
                 id: None,
                 name: user_data.name,
-                custom_id: user_data.custom_id,
-                email: user_data.email,
+                username: user_data.username,
+                email: user_data.email.to_lowercase(),
                 hashed_password: hash_password(user_data.password),
                 permission: user_data.permission,
                 uuid: user_uuid_copy,
@@ -75,7 +89,7 @@ impl User {
     }
     pub async fn authenticate(email: String, password: String, conn: &DbConn) -> Result<(String, String), ()>  {
         let users: Vec<User> = conn.run( move |c| {
-            all_users.filter(users::email.eq(email))
+            all_users.filter(users::email.eq(email.to_lowercase()))
                 .load::<User>(c).unwrap()
         }).await;
         if users.len() > 0 {
@@ -89,7 +103,8 @@ impl User {
             Err(())
         }
     }
-    pub async fn get_user(uuid: String, conn: &DbConn) -> Result<User, ()> {
+
+    pub async fn get_user_by_uuid(uuid: String, conn: &DbConn) -> Result<User, ()> {
         let users: Vec<User> = conn.run( move |c| {
             all_users.filter(users::uuid.eq(uuid))
                 .load::<User>(c).unwrap()
@@ -99,5 +114,55 @@ impl User {
         } else {
             Err(())
         }
+    }
+
+    pub async fn get_users_by_query(query: UserQuery, conn: &DbConn) -> Vec<User> {
+        let users: Vec<User> = conn.run( move |c| {
+            let mut res = all_users.order(users::id).into_boxed();
+            if query.name != "" {
+                println!("There is a name {}", query.name);
+                res = res.filter(users::name.like(format!("%{}%", query.name)));
+            }
+            if query.username != "" {
+                println!("There is a username {}", query.username);
+                res = res.filter(users::username.like(format!("%{}%", query.username)));
+            }
+            if query.email != "" {
+                println!("There is an email {}", query.email);
+                res = res.filter(users::email.like(format!("%{}%", query.email)));
+            }
+            if query.uuid != "" {
+                println!("There is an uuid {}", query.uuid);
+                res = res.filter(users::uuid.like(format!("%{}%", query.uuid)));
+            }
+            res.load::<User>(c).unwrap()
+        }).await;
+        println!("{:#?}", users);
+        users
+    }
+
+    pub async fn delete_users_by_query(query: UserQuery, conn: &DbConn) -> Vec<User> {
+        let users = User::get_users_by_query(query.clone(), conn).await;
+        conn.run( move |c| {
+            let mut res = diesel::delete(all_users).into_boxed();
+            if query.name != "" {
+                println!("There is a name {}", query.name);
+                res = res.filter(users::name.like(format!("%{}%", query.name)));
+            }
+            if query.username != "" {
+                println!("There is a username {}", query.username);
+                res = res.filter(users::username.like(format!("%{}%", query.username)));
+            }
+            if query.email != "" {
+                println!("There is an email {}", query.email);
+                res = res.filter(users::email.like(format!("%{}%", query.email)));
+            }
+            if query.uuid != "" {
+                println!("There is an uuid {}", query.uuid);
+                res = res.filter(users::uuid.like(format!("%{}%", query.uuid)));
+            }
+            res.execute(c).unwrap()
+        }).await;
+        users
     }
 }

@@ -39,7 +39,7 @@ impl Peer {
     pub async fn add(peer_data: Peer, conn: &DbConn) {
         conn.run(move |c| {
             let _res = diesel::insert_into(peers::table).values(&peer_data).execute(c);
-        }).await
+        }).await;
     }
     pub async fn remove(id: i32, conn: &DbConn) {
         let _res = conn.run(move |c| {
@@ -56,10 +56,14 @@ impl Peer {
         }).await;
         peers
     }
-    pub async fn get_peer(id: i32, conn: &DbConn) -> Peer {
+    pub async fn get_peer(id: i32, conn: &DbConn) -> Result<Peer, ()> {
         let peers: Vec<Peer> = conn.run(move |c| {
             all_peers.filter(peers::id.eq(id)).load::<Peer>(c).unwrap()
         }).await;
-        peers[0].clone()
+        if peers.len() > 0 {
+            Ok(peers[0].clone())
+        } else {
+            Err(())
+        }
     }
 }

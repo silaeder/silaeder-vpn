@@ -6,8 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
     <title>Silaeder Vpn</title>
     <meta name="theme-color" content="#ffd25e">
-    <link rel="icon" type="image/jpeg" sizes="640x426" href="assets/img/loft.jpg">
-    <link rel="icon" type="image/jpeg" sizes="640x426" href="assets/img/building.jpg">
     <link rel="stylesheet" href="assets/bootstrap/css/bootstrap.min.css">
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="assets/fonts/ionicons.min.css">

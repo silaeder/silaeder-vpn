@@ -10,7 +10,7 @@ CREATE TABLE Sessions (
 CREATE TABLE Users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name VARCHAR NOT NULL,
-    custom_id VARCHAR NOT NULL,
+    username VARCHAR NOT NULL,
     email VARCHAR NOT NULL,
     hashed_password VARCHAR NOT NULL,
     permission INTEGER NOT NULL,

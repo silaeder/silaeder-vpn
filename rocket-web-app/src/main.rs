@@ -23,7 +23,7 @@ use rocket::http::{Cookie, CookieJar};
 use rocket_dyn_templates::{Template};
 
 use crate::utils::validate;
-use crate::user::{User, UserData, UserLoginData};
+use crate::user::{User, UserData, UserLoginData, UserQuery};
 use crate::session::Session;
 use crate::peer::Peer;
 use std::fs::File;
@@ -33,15 +33,13 @@ use std::io::Write;
 #[database("sqlite_database")]
 pub struct DbConn(diesel::SqliteConnection);
 
-//<-----------------------API_REQUESTS----------------------------------------->
-
 #[post("/add_user", data = "<userdata>")]
-async fn useradd(cookies: &CookieJar<'_>, userdata: Form<UserData>, conn: DbConn) -> Result<String, Redirect> {
+async fn useradd(cookies: &CookieJar<'_>, userdata: Form<UserData>, conn: DbConn) -> Result<Flash<Redirect>, Redirect> {
     match validate(cookies, &conn).await {
         Ok(u) => {
-            if u.permission > 5 {
+            if u.permission >= 10 {
                 let user_uuid = User::add(userdata.into_inner(), &conn).await.unwrap();
-                return Ok(user_uuid.to_owned())
+                return Ok(Flash::new(Redirect::to("/admin"), "added_user_uuid", user_uuid.to_owned()))
             }
         },
         Err(_) => {
@@ -58,53 +56,123 @@ async fn userlogin(cookies: &CookieJar<'_>, userdata: Form<UserLoginData>, conn:
             cookies.add_private(Cookie::new("token", token));
             Ok(Redirect::to("/"))
         },
-        _ => {
+        Err(_) => {
             Err(Flash::error(Redirect::to("/login"), "Неправильный логин или пароль"))
         }
     }
 }
 
 #[post("/logout")]
-async fn userlogout(cookies: &CookieJar<'_>, conn: DbConn) -> Redirect {    
-    let mut token: String = "".to_owned();
-    let token_cookie = cookies.get_private("token");
-    if !token_cookie.is_none() {
-        let token_cookie = token_cookie.unwrap();
-        token = token_cookie.value().to_string();
-        cookies.remove_private(token_cookie);
+async fn userlogout(cookies: &CookieJar<'_>, conn: DbConn) -> Redirect {
+    match validate(cookies, &conn).await {
+        Ok(_) => {
+            let uuid = cookies.get_private("uuid").unwrap().value().to_owned();
+            let token = cookies.get_private("token").unwrap().value().to_owned();
+            cookies.remove_private(cookies.get_private("uuid").unwrap());
+            cookies.remove_private(cookies.get_private("token").unwrap());
+            Session::end(uuid, token, &conn).await;
+        },
+        Err(_) => {},
     }
-    let mut uuid: String = "".to_owned();
-    let uuid_cookie = cookies.get_private("uuid");
-    if !uuid_cookie.is_none() {
-        let uuid_cookie = uuid_cookie.unwrap();
-        uuid = uuid_cookie.value().to_string();
-        cookies.remove_private(uuid_cookie);
-    }
-    Session::end(uuid.to_owned(), token.to_owned(), &conn).await;
     Redirect::to("/login")
+}
+
+#[post("/add_peer", data = "<peerdata>")]
+async fn add_peer(cookies: &CookieJar<'_>, peerdata: Form<Peer>, conn: DbConn) -> Redirect {
+    match validate(cookies, &conn).await {
+        Ok(u) => {
+            if u.permission >= 10 {
+                Peer::add(peerdata.into_inner(), &conn).await;
+                Redirect::to("/admin")
+            } else {
+                Redirect::to("/dashboard")
+            }
+        },
+        Err(_) => {
+            Redirect::to("/login")
+        },
+    }
+}
+
+#[post("/search_user", data = "<userq>")]
+async fn searchuser(cookies: &CookieJar<'_>, userq: Form<UserQuery>, conn: DbConn) -> Result<Flash<Redirect>, ()> {
+    let userquery = userq.into_inner();
+    println!("{:#?}", &userquery);
+    match validate(cookies, &conn).await {
+        Ok(u) => {
+            if u.permission >= 10 {
+                Ok(Flash::new(Redirect::to("/admin"), "users", serde_json::to_string(&User::get_users_by_query(userquery, &conn).await).unwrap()))
+            } else {
+                Err(())
+            }
+        },
+        Err(_) => {
+            Err(())
+        },
+    }
+}
+
+#[post("/delete_user", data = "<userq>")]
+async fn deleteuser(cookies: &CookieJar<'_>, userq: Form<UserQuery>, conn: DbConn) -> Result<Flash<Redirect>, ()> {
+    let userquery = userq.into_inner();
+    match validate(cookies, &conn).await {
+        Ok(u) => {
+            if u.permission >= 10 {
+                Ok(Flash::new(Redirect::to("/admin"), "users", serde_json::to_string(&User::delete_users_by_query(userquery, &conn).await).unwrap()))
+            } else {
+                Err(())
+            }
+        },
+        Err(_) => {
+            Err(())
+        },
+    }
 }
 
 #[get("/config/<id>")]
 async fn get_config(cookies: &CookieJar<'_>, id: i32, conn: DbConn) -> Result<NamedFile, Redirect> {
-    let p = Peer::get_peer(id, &conn).await;
+    match Peer::get_peer(id, &conn).await {
+        Ok(p) => {
+            match validate(cookies, &conn).await {
+                Ok(u) => {
+                    if u.uuid == p.owner_uuid {
+                        let sp = format!("cache_files/{}_{}.conf", p.owner_name, p.id.unwrap());
+                        {
+                            let mut file = File::create(Path::new(&sp)).unwrap();
+                            writeln!(&mut file, "[Interface]");
+                            writeln!(&mut file, "PrivateKey = {}", p.private_key);
+                            writeln!(&mut file, "Address = {}", p.address);
+                            writeln!(&mut file, "DNS = 1.1.1.1, 8.8.8.8");
+                            writeln!(&mut file, "");
+                            writeln!(&mut file, "[Peer]");
+                            writeln!(&mut file, "PublicKey = {}", p.server_public_key);
+                            writeln!(&mut file, "AllowedIPs = 0.0.0.0/0");
+                            writeln!(&mut file, "Endpoint = {}", p.server_address);
+                            writeln!(&mut file, "PersistentKeepalive = 20");
+                        }
+                        Ok(NamedFile::open(sp).await.ok().unwrap())
+                    } else {
+                        Err(Redirect::to("/dashboard"))
+                    }
+                },
+                Err(_) => {
+                    Err(Redirect::to("/login"))
+                }
+            }
+        },
+        Err(_) => {
+            Err(Redirect::to("/dashboard"))
+        }
+    }
+    
+}
+
+#[get("/allusers")]
+async fn get_all_user(cookies: &CookieJar<'_>, conn: DbConn) -> Result<String, Redirect> {
     match validate(cookies, &conn).await {
         Ok(u) => {
-            if u.uuid == p.owner_uuid {
-                let sp = format!("cache_files/{}_{}.conf", p.owner_name, p.id.unwrap());
-                {
-                    let mut file = File::create(Path::new(&sp)).unwrap();
-                    writeln!(&mut file, "[Interface]");
-                    writeln!(&mut file, "PrivateKey = {}", p.private_key);
-                    writeln!(&mut file, "Address = {}", p.address);
-                    writeln!(&mut file, "DNS = 1.1.1.1, 8.8.8.8");
-                    writeln!(&mut file, "");
-                    writeln!(&mut file, "[Peer]");
-                    writeln!(&mut file, "PublicKey = {}", p.server_public_key);
-                    writeln!(&mut file, "AllowedIPs = 0.0.0.0/0");
-                    writeln!(&mut file, "Endpoint = {}", p.server_address);
-                    writeln!(&mut file, "PersistentKeepalive = 20");
-                }
-                Ok(NamedFile::open(sp).await.ok().unwrap())
+            if u.permission >= 10 {
+                Ok(format!("{:#?}", User::get_all(&conn).await))
             } else {
                 Err(Redirect::to("/dashboard"))
             }
@@ -114,7 +182,6 @@ async fn get_config(cookies: &CookieJar<'_>, id: i32, conn: DbConn) -> Result<Na
         }
     }
 }
-//<-----------------------RENDER_REQUESTS-------------------------------------->
 
 #[get("/")]
 async fn index() -> Redirect {
@@ -125,7 +192,38 @@ async fn index() -> Redirect {
 async fn dashboard(cookies: &CookieJar<'_>, conn: DbConn) -> Result<Template, Redirect> {
     match validate(cookies, &conn).await {
         Ok(u) => {
-            Ok(Template::render("dashboard", context! {peers: Peer::get_all_for_user(u.uuid, &conn).await, username: u.name}))
+            println!("{:#?}", context!{peers: Peer::get_all_for_user(u.uuid.clone(), &conn).await, username: u.name.clone()});
+            Ok(Template::render("dashboard", context! {peers: Peer::get_all_for_user(u.uuid.clone(), &conn).await, username: u.name.clone()}))
+        },
+        Err(_) => {
+            Err(Redirect::to("/login"))
+        }
+    }
+}
+
+#[get("/admin")]
+async fn admin(flash: Option<FlashMessage<'_>>, cookies: &CookieJar<'_>, conn:DbConn) -> Result<Template, Redirect> {
+    match validate(cookies, &conn).await {
+        Ok(u) => {
+            if u.permission >= 10{
+                let flash = flash.map(FlashMessage::into_inner);
+                match flash {
+                    Some(f) => {
+                        if f.0 == "users" {
+                            println!("{}", f.1.clone());
+                            let deser: Vec<User> = serde_json::from_str(f.1.clone().as_str()).unwrap();
+                            Ok(Template::render("admin", context!{flash: (f.0.clone(), deser)}))
+                        } else {
+                            Ok(Template::render("admin", context!{flash: (f.0.clone(), f.1.clone())}))
+                        }
+                    },
+                    None => {
+                        Ok(Template::render("admin", context!{}))
+                    },
+                }
+            } else {
+                Err(Redirect::to("/dashboard"))
+            }
         },
         Err(_) => {
             Err(Redirect::to("/login"))
@@ -137,7 +235,7 @@ async fn dashboard(cookies: &CookieJar<'_>, conn: DbConn) -> Result<Template, Re
 async fn request_peer(cookies: &CookieJar<'_>, conn: DbConn) -> Redirect {
     match validate(cookies, &conn).await {
         Ok(u) => {
-            if u.permission > 5 {
+            if u.permission >= 10 {
                 Peer::add(
                     Peer {
                         id: None,
@@ -161,6 +259,7 @@ async fn request_peer(cookies: &CookieJar<'_>, conn: DbConn) -> Redirect {
 async fn contact() -> Template {
     Template::render("contact", context!{})
 }
+
 #[get("/login")]
 fn login(flash: Option<FlashMessage<>>) -> Template {
     let flash = flash.map(FlashMessage::into_inner);
@@ -173,10 +272,6 @@ fn login(flash: Option<FlashMessage<>>) -> Template {
         },
     }
 }
-
-
-
-//<-----------------------BACKEND_MAGIC---------------------------------------->
 
 async fn run_migrations(rocket: Rocket<Build>) -> Rocket<Build> {
     embed_migrations!();
@@ -192,6 +287,6 @@ fn rocket() -> _ {
         .attach(Template::fairing())
         .attach(AdHoc::on_ignite("Run Migrations", run_migrations))
         .mount("/", FileServer::from(relative!("static")))
-        .mount("/", routes![index, dashboard, contact, login, request_peer, get_config])
+        .mount("/", routes![index, dashboard, contact, login, request_peer, get_config, add_peer, get_all_user, admin, searchuser, deleteuser])
         .mount("/auth", routes![userlogin, useradd, userlogout])
 }

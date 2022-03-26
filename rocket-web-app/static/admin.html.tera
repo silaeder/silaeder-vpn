@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <title>Silaeder Vpn</title>
+    <meta name="theme-color" content="#ffd25e">
+    <link rel="stylesheet" href="assets/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="assets/fonts/ionicons.min.css">
+    <link rel="stylesheet" href="assets/css/Article-List.css">
+    <link rel="stylesheet" href="assets/css/Contact-Form-Clean.css">
+    <link rel="stylesheet" href="assets/css/Login-Form-Dark.css">
+    <link rel="stylesheet" href="assets/css/Navigation-Clean.css">
+    <link rel="stylesheet" href="assets/css/Navigation-with-Button.css">
+    <link rel="stylesheet" href="assets/css/Registration-Form-with-Photo.css">
+    <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+
+<body>
+    <div class="row row-cols-3" style="margin-right: 0px;margin-left: 0px;">
+        <div class="col" style="min-width: 300px;">
+            <h3 class="text-center">Add user</h3>
+            <form method="post" action="/auth/add_user"><input class="form-control" type="text" name="name" placeholder="User real name"><input class="form-control" type="text" name="username" placeholder="Username"><input class="form-control" type="text" name="email" placeholder="User email"><input class="form-control" type="password" name="password" placeholder="User password"><input class="form-control" type="text" name="permission" placeholder="User permission level">
+                <div class="text-center"><button class="btn btn-success" type="submit">Add User</button></div>
+            </form>
+        </div>
+        <div class="col" style="min-width: 300px;">
+            <h3 class="text-center">Add peer</h3>
+            <form method="post" action="/add_peer"><input class="form-control" type="hidden" name="name" placeholder="User real name"><input class="form-control" type="text" name="public_key" placeholder="Peer public key"><input class="form-control" type="text" name="private_key" placeholder="Peer private key"><input class="form-control" type="text" name="address" placeholder="Peer address in VPN"><input class="form-control" type="text" name="server_public_key" placeholder="Public key of related server"><input class="form-control" type="text" name="server_address" placeholder="Address of related server"><input class="form-control" type="text" name="owner_uuid" placeholder="Uuid of owner(user)"><input class="form-control" type="text" name="owner_name" placeholder="Name of owner(user)">
+                <div class="text-center"><button class="btn btn-info" type="submit">Add Peer</button></div>
+            </form>
+        </div>
+        <div class="col" style="min-width: 300px;">
+            <h3 class="text-center">User search</h3>
+            <form method="post" action="/search_user"><input class="form-control" type="text" name="name" placeholder="Name"><input class="form-control" type="text" name="username" placeholder="Username"><input class="form-control" type="text" name="email" placeholder="Email"><input class="form-control" type="text" name="uuid" placeholder="Uuid">
+                <div class="row">
+                    <div class="col">
+                        <div class="text-center"><button class="btn btn-success" type="submit">Search User</button></div>
+                    </div>
+                    <div class="col">
+                        <div class="text-center"><button class="btn btn-danger" type="submit" formaction="/delete_user">Delete User</button></div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>{% if flash %}
+    {% if flash.0 == "users" %}
+    <div class="row row-cols-4" style="margin-right: 0px;margin-left: 0px;">{% for user in flash.1 %}
+        <div class="col">
+            <div class="text-center">
+                <h3>{{ user.name }}</h3><code>{{ user.email }}</code><br><code>{{ user.username }}</code><br><code>{{ user.uuid}}</code><br>
+                <h4>{{ user.permission }}</h4>
+            </div>
+        </div>{% endfor %}
+    </div>{% elif flash.0 == "added_user_uuid" %}<code>{{ flash.1 }}</code>{% else %}<code>{{ flash.1 }}</code>        {% endif %}
+    {% endif %}
+    <script src="assets/bootstrap/js/bootstrap.min.js"></script>
+</body>
+
+</html>
