@@ -1,4 +1,4 @@
-use rocket::serde::Serialize;
+use rocket::serde::{Serialize, Deserialize};
 use diesel::{self, prelude::*};
 
 mod schema {
@@ -21,7 +21,7 @@ pub use self::schema::peers::dsl::{peers as all_peers};
 
 use crate::DbConn;
 
-#[derive(QueryableByName, Serialize, Queryable, Insertable, Debug, Clone, FromForm)]
+#[derive(QueryableByName, Serialize, Deserialize, Queryable, Insertable, Debug, Clone, FromForm)]
 #[serde(crate = "rocket::serde")]
 #[table_name="peers"]
 pub struct Peer {
@@ -33,6 +33,15 @@ pub struct Peer {
     pub server_address: String,
     pub owner_uuid: String,
     pub owner_name: String,
+}
+
+#[derive(Debug, FromForm, Clone)]
+pub struct PeerQuery {
+    pub user_name: String,
+    pub public_key: String,
+    pub address: String,
+    pub server_public_key: String,
+    pub server_address: String,
 }
 
 impl Peer {
@@ -65,5 +74,52 @@ impl Peer {
         } else {
             Err(())
         }
+    }
+
+    pub async fn get_peers_by_query(query: PeerQuery, conn: &DbConn) -> Vec<Peer> {
+        let peers: Vec<Peer> = conn.run( move |c| {
+            let mut res = all_peers.order(peers::id).into_boxed();
+            if query.user_name != "" {
+                res = res.filter(peers::owner_name.like(format!("%{}%", query.user_name)));
+            }
+            if query.public_key != "" {
+                res = res.filter(peers::public_key.like(format!("%{}%", query.public_key)));
+            }
+            if query.address != "" {
+                res = res.filter(peers::address.like(format!("%{}%", query.address)));
+            }
+            if query.server_public_key != "" {
+                res = res.filter(peers::server_public_key.like(format!("%{}%", query.server_public_key)));
+            }            
+            if query.server_address != "" {
+                res = res.filter(peers::server_address.like(format!("%{}%", query.server_address)));
+            }
+            res.load::<Peer>(c).unwrap()
+        }).await;
+        peers
+    }
+
+    pub async fn delete_peers_by_query(query: PeerQuery, conn: &DbConn) -> Vec<Peer> {
+        let peers: Vec<Peer> = Peer::get_peers_by_query(query.clone(), conn).await;
+        conn.run( move |c| {
+            let mut res = diesel::delete(all_peers).into_boxed();
+            if query.user_name != "" {
+                res = res.filter(peers::owner_name.like(format!("%{}%", query.user_name)));
+            }
+            if query.public_key != "" {
+                res = res.filter(peers::public_key.like(format!("%{}%", query.public_key)));
+            }
+            if query.address != "" {
+                res = res.filter(peers::address.like(format!("%{}%", query.address)));
+            }
+            if query.server_public_key != "" {
+                res = res.filter(peers::server_public_key.like(format!("%{}%", query.server_public_key)));
+            }            
+            if query.server_address != "" {
+                res = res.filter(peers::server_address.like(format!("%{}%", query.server_address)));
+            }
+            res.execute(c).unwrap()
+        }).await;
+        peers
     }
 }

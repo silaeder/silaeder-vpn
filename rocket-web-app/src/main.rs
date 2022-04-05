@@ -25,7 +25,7 @@ use rocket_dyn_templates::{Template};
 use crate::utils::validate;
 use crate::user::{User, UserData, UserLoginData, UserQuery};
 use crate::session::Session;
-use crate::peer::Peer;
+use crate::peer::{Peer, PeerQuery};
 use std::fs::File;
 use std::path::Path;
 use std::io::Write;
@@ -97,7 +97,6 @@ async fn add_peer(cookies: &CookieJar<'_>, peerdata: Form<Peer>, conn: DbConn) -
 #[post("/search_user", data = "<userq>")]
 async fn searchuser(cookies: &CookieJar<'_>, userq: Form<UserQuery>, conn: DbConn) -> Result<Flash<Redirect>, ()> {
     let userquery = userq.into_inner();
-    println!("{:#?}", &userquery);
     match validate(cookies, &conn).await {
         Ok(u) => {
             if u.permission >= 10 {
@@ -119,6 +118,40 @@ async fn deleteuser(cookies: &CookieJar<'_>, userq: Form<UserQuery>, conn: DbCon
         Ok(u) => {
             if u.permission >= 10 {
                 Ok(Flash::new(Redirect::to("/admin"), "users", serde_json::to_string(&User::delete_users_by_query(userquery, &conn).await).unwrap()))
+            } else {
+                Err(())
+            }
+        },
+        Err(_) => {
+            Err(())
+        },
+    }
+}
+
+#[post("/search_peer", data = "<peerq>")]
+async fn searchpeer(cookies: &CookieJar<'_>, peerq: Form<PeerQuery>, conn: DbConn) -> Result<Flash<Redirect>, ()> {
+    let peerquery = peerq.into_inner();
+    match validate(cookies, &conn).await {
+        Ok(u) => {
+            if u.permission >= 10 {
+                Ok(Flash::new(Redirect::to("/admin"), "peers", serde_json::to_string(&Peer::get_peers_by_query(peerquery, &conn).await).unwrap()))
+            } else {
+                Err(())
+            }
+        },
+        Err(_) => {
+            Err(())
+        },
+    }
+}
+
+#[post("/delete_peer", data = "<peerq>")]
+async fn deletepeer(cookies: &CookieJar<'_>, peerq: Form<PeerQuery>, conn: DbConn) -> Result<Flash<Redirect>, ()> {
+    let peerquery = peerq.into_inner();
+    match validate(cookies, &conn).await {
+        Ok(u) => {
+            if u.permission >= 10 {
+                Ok(Flash::new(Redirect::to("/admin"), "peers", serde_json::to_string(&Peer::delete_peers_by_query(peerquery, &conn).await).unwrap()))
             } else {
                 Err(())
             }
@@ -213,6 +246,10 @@ async fn admin(flash: Option<FlashMessage<'_>>, cookies: &CookieJar<'_>, conn:Db
                             println!("{}", f.1.clone());
                             let deser: Vec<User> = serde_json::from_str(f.1.clone().as_str()).unwrap();
                             Ok(Template::render("admin", context!{flash: (f.0.clone(), deser)}))
+                        } else if f.0 == "peers" {
+                            println!("{}", f.1.clone());
+                            let deser: Vec<Peer> = serde_json::from_str(f.1.clone().as_str()).unwrap();
+                            Ok(Template::render("admin", context!{flash: (f.0.clone(), deser)}))
                         } else {
                             Ok(Template::render("admin", context!{flash: (f.0.clone(), f.1.clone())}))
                         }
@@ -287,6 +324,6 @@ fn rocket() -> _ {
         .attach(Template::fairing())
         .attach(AdHoc::on_ignite("Run Migrations", run_migrations))
         .mount("/", FileServer::from(relative!("static")))
-        .mount("/", routes![index, dashboard, contact, login, request_peer, get_config, add_peer, get_all_user, admin, searchuser, deleteuser])
+        .mount("/", routes![index, dashboard, contact, login, request_peer, get_config, add_peer, get_all_user, admin, searchuser, deleteuser, searchpeer, deletepeer])
         .mount("/auth", routes![userlogin, useradd, userlogout])
 }

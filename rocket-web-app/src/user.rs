@@ -120,24 +120,19 @@ impl User {
         let users: Vec<User> = conn.run( move |c| {
             let mut res = all_users.order(users::id).into_boxed();
             if query.name != "" {
-                println!("There is a name {}", query.name);
                 res = res.filter(users::name.like(format!("%{}%", query.name)));
             }
             if query.username != "" {
-                println!("There is a username {}", query.username);
                 res = res.filter(users::username.like(format!("%{}%", query.username)));
             }
             if query.email != "" {
-                println!("There is an email {}", query.email);
                 res = res.filter(users::email.like(format!("%{}%", query.email)));
             }
             if query.uuid != "" {
-                println!("There is an uuid {}", query.uuid);
                 res = res.filter(users::uuid.like(format!("%{}%", query.uuid)));
             }
             res.load::<User>(c).unwrap()
         }).await;
-        println!("{:#?}", users);
         users
     }
 
@@ -146,19 +141,15 @@ impl User {
         conn.run( move |c| {
             let mut res = diesel::delete(all_users).into_boxed();
             if query.name != "" {
-                println!("There is a name {}", query.name);
                 res = res.filter(users::name.like(format!("%{}%", query.name)));
             }
             if query.username != "" {
-                println!("There is a username {}", query.username);
                 res = res.filter(users::username.like(format!("%{}%", query.username)));
             }
             if query.email != "" {
-                println!("There is an email {}", query.email);
                 res = res.filter(users::email.like(format!("%{}%", query.email)));
             }
             if query.uuid != "" {
-                println!("There is an uuid {}", query.uuid);
                 res = res.filter(users::uuid.like(format!("%{}%", query.uuid)));
             }
             res.execute(c).unwrap()
