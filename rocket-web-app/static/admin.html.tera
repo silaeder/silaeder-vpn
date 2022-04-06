@@ -18,6 +18,18 @@
 </head>
 
 <body>
+    <nav class="navbar navbar-light navbar-expand-lg navigation-clean-button">
+        <div class="container"><a class="navbar-brand" href="/">Silaeder VPN</a><button data-bs-toggle="collapse" class="navbar-toggler" data-bs-target="#navcol-1"><span class="visually-hidden">Toggle navigation</span><span class="navbar-toggler-icon"></span></button>
+            <div class="collapse navbar-collapse" id="navcol-1">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item"><a class="nav-link disabled" href="/admin">Admin panel</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/dashboard">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link disabled" href="/admin">{{ username }}</a></li>
+                </ul>
+                <form action="/auth/logout" method="post"><input class="form-control" type="hidden"><button class="btn btn-warning action-button" type="submit">Выйти</button></form>
+            </div>
+        </div>
+    </nav>
     <div class="row row-cols-4" style="margin-right: 0px;margin-left: 0px;">
         <div class="col" style="min-width: 300px;">
             <h3 class="text-center">Add user</h3>
@@ -32,17 +44,26 @@
             </form>
         </div>
         <div class="col" style="min-width: 300px;">
-            <h3 class="text-center">User search</h3>
-            <form method="post" action="/search_user"><input class="form-control" type="text" name="name" placeholder="Name"><input class="form-control" type="text" name="username" placeholder="Username"><input class="form-control" type="text" name="email" placeholder="Email"><input class="form-control" type="text" name="uuid" placeholder="Uuid">
-                <div class="row">
-                    <div class="col">
-                        <div class="text-center"><button class="btn btn-success" type="submit">Search User</button></div>
+            <div>
+                <h3 class="text-center">User search</h3>
+                <form method="post" action="/search_user"><input class="form-control" type="text" name="name" placeholder="Name"><input class="form-control" type="text" name="username" placeholder="Username"><input class="form-control" type="text" name="email" placeholder="Email"><input class="form-control" type="text" name="uuid" placeholder="Uuid">
+                    <div class="row">
+                        <div class="col">
+                            <div class="text-center"><button class="btn btn-success" type="submit">Search User</button></div>
+                        </div>
                     </div>
-                    <div class="col">
-                        <div class="text-center"><button class="btn btn-danger" type="submit" formaction="/delete_user">Delete User</button></div>
+                </form>
+            </div>
+            <div>
+                <h3 class="text-center">Delete user</h3>
+                <form method="post" action="/delete_user"><input class="form-control" type="text" name="uuid" placeholder="Uuid">
+                    <div class="row">
+                        <div class="col">
+                            <div class="text-center"><button class="btn btn-danger" type="submit" formaction="/delete_user">Delete User</button></div>
+                        </div>
                     </div>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
         <div class="col" style="min-width: 300px;">
             <h3 class="text-center">Peer search</h3>

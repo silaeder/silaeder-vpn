@@ -61,6 +61,21 @@ pub struct UserQuery {
     pub uuid: String,
 }
 
+#[derive(Debug, FromForm, Clone)]
+pub struct UserPasswordMod {
+    pub current_password: String,
+    pub new_password: String,
+}
+
+#[derive(Debug, FromForm, Clone)]
+pub struct UserUsernameMod {
+    pub new_username: String,
+}
+
+#[derive(Debug, FromForm, Clone)]
+pub struct UserDeleteForm {
+    pub uuid: String,
+}
 
 impl User {
     pub async fn get_all(conn: &DbConn) -> Vec<User> {
@@ -116,6 +131,13 @@ impl User {
         }
     }
 
+    pub async fn delete_user_by_uuid(uuid: String, conn: &DbConn) {
+        conn.run( move |c| {
+            diesel::delete(all_users.filter(users::uuid.eq(uuid)))
+                .execute(c).unwrap();
+        }).await;
+    }
+
     pub async fn get_users_by_query(query: UserQuery, conn: &DbConn) -> Vec<User> {
         let users: Vec<User> = conn.run( move |c| {
             let mut res = all_users.order(users::id).into_boxed();
@@ -136,24 +158,17 @@ impl User {
         users
     }
 
-    pub async fn delete_users_by_query(query: UserQuery, conn: &DbConn) -> Vec<User> {
-        let users = User::get_users_by_query(query.clone(), conn).await;
-        conn.run( move |c| {
-            let mut res = diesel::delete(all_users).into_boxed();
-            if query.name != "" {
-                res = res.filter(users::name.like(format!("%{}%", query.name)));
-            }
-            if query.username != "" {
-                res = res.filter(users::username.like(format!("%{}%", query.username)));
-            }
-            if query.email != "" {
-                res = res.filter(users::email.like(format!("%{}%", query.email)));
-            }
-            if query.uuid != "" {
-                res = res.filter(users::uuid.like(format!("%{}%", query.uuid)));
-            }
-            res.execute(c).unwrap()
+    pub async fn change_password(uid: String, np: String, conn: &DbConn) {
+        let _res = conn.run( move |c| {
+            diesel::update(all_users.filter(users::uuid.eq(uid)))
+            .set(users::hashed_password.eq(hash_password(np))).execute(c)
         }).await;
-        users
+    }
+
+    pub async fn change_username(uid: String, nun: String, conn: &DbConn) {
+        let _res = conn.run( move |c| {
+            diesel::update(all_users.filter(users::uuid.eq(uid)))
+            .set(users::username.eq(nun)).execute(c)
+        }).await;
     }
 }

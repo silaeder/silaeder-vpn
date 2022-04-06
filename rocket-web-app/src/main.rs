@@ -22,8 +22,8 @@ use rocket::post;
 use rocket::http::{Cookie, CookieJar};
 use rocket_dyn_templates::{Template};
 
-use crate::utils::validate;
-use crate::user::{User, UserData, UserLoginData, UserQuery};
+use crate::utils::{validate, validate_password};
+use crate::user::{User, UserData, UserLoginData, UserQuery, UserPasswordMod, UserUsernameMod, UserDeleteForm};
 use crate::session::Session;
 use crate::peer::{Peer, PeerQuery};
 use std::fs::File;
@@ -112,12 +112,13 @@ async fn searchuser(cookies: &CookieJar<'_>, userq: Form<UserQuery>, conn: DbCon
 }
 
 #[post("/delete_user", data = "<userq>")]
-async fn deleteuser(cookies: &CookieJar<'_>, userq: Form<UserQuery>, conn: DbConn) -> Result<Flash<Redirect>, ()> {
+async fn deleteuser(cookies: &CookieJar<'_>, userq: Form<UserDeleteForm>, conn: DbConn) -> Result<Redirect, ()> {
     let userquery = userq.into_inner();
     match validate(cookies, &conn).await {
         Ok(u) => {
             if u.permission >= 10 {
-                Ok(Flash::new(Redirect::to("/admin"), "users", serde_json::to_string(&User::delete_users_by_query(userquery, &conn).await).unwrap()))
+                User::delete_user_by_uuid(userquery.uuid, &conn).await;
+                Ok(Redirect::to("/admin"))
             } else {
                 Err(())
             }
@@ -158,6 +159,36 @@ async fn deletepeer(cookies: &CookieJar<'_>, peerq: Form<PeerQuery>, conn: DbCon
         },
         Err(_) => {
             Err(())
+        },
+    }
+}
+
+#[post("/change_password", data = "<passwordform>")]
+async fn changepassword(cookies: &CookieJar<'_>, passwordform: Form<UserPasswordMod>, conn: DbConn) -> Redirect {
+    let passwordupdate = passwordform.into_inner();
+    match validate(cookies, &conn).await {
+        Ok(u) => {
+            if validate_password(passwordupdate.current_password.clone(), u.hashed_password.clone()) {
+                User::change_password(u.uuid, passwordupdate.new_password, &conn).await;
+            }
+            Redirect::to("/settings")
+        },
+        Err(_) => {
+            Redirect::to("/login")
+        },
+    }
+}
+
+#[post("/change_username", data = "<usernameform>")]
+async fn changeusername(cookies: &CookieJar<'_>, usernameform: Form<UserUsernameMod>, conn: DbConn) -> Redirect {
+    let usernameupdate = usernameform.into_inner();
+    match validate(cookies, &conn).await {
+        Ok(u) => {
+            User::change_username(u.uuid, usernameupdate.new_username, &conn).await;
+            Redirect::to("/settings")
+        },
+        Err(_) => {
+            Redirect::to("/login")
         },
     }
 }
@@ -225,8 +256,19 @@ async fn index() -> Redirect {
 async fn dashboard(cookies: &CookieJar<'_>, conn: DbConn) -> Result<Template, Redirect> {
     match validate(cookies, &conn).await {
         Ok(u) => {
-            println!("{:#?}", context!{peers: Peer::get_all_for_user(u.uuid.clone(), &conn).await, username: u.name.clone()});
-            Ok(Template::render("dashboard", context! {peers: Peer::get_all_for_user(u.uuid.clone(), &conn).await, username: u.name.clone()}))
+            Ok(Template::render("dashboard", context! {peers: Peer::get_all_for_user(u.uuid.clone(), &conn).await, username: u.name.clone(), admin: u.permission >= 10}))
+        },
+        Err(_) => {
+            Err(Redirect::to("/login"))
+        }
+    }
+}
+
+#[get("/settings")]
+async fn settings(cookies: &CookieJar<'_>, conn: DbConn) -> Result<Template, Redirect> {
+    match validate(cookies, &conn).await {
+        Ok(u) => {
+            Ok(Template::render("settings", context! {username: u.username.clone()}))
         },
         Err(_) => {
             Err(Redirect::to("/login"))
@@ -245,17 +287,17 @@ async fn admin(flash: Option<FlashMessage<'_>>, cookies: &CookieJar<'_>, conn:Db
                         if f.0 == "users" {
                             println!("{}", f.1.clone());
                             let deser: Vec<User> = serde_json::from_str(f.1.clone().as_str()).unwrap();
-                            Ok(Template::render("admin", context!{flash: (f.0.clone(), deser)}))
+                            Ok(Template::render("admin", context!{flash: (f.0.clone(), deser), username: u.username.clone()}))
                         } else if f.0 == "peers" {
                             println!("{}", f.1.clone());
                             let deser: Vec<Peer> = serde_json::from_str(f.1.clone().as_str()).unwrap();
-                            Ok(Template::render("admin", context!{flash: (f.0.clone(), deser)}))
+                            Ok(Template::render("admin", context!{flash: (f.0.clone(), deser), username: u.username.clone()}))
                         } else {
-                            Ok(Template::render("admin", context!{flash: (f.0.clone(), f.1.clone())}))
+                            Ok(Template::render("admin", context!{flash: (f.0.clone(), f.1.clone()), username: u.username.clone()}))
                         }
                     },
                     None => {
-                        Ok(Template::render("admin", context!{}))
+                        Ok(Template::render("admin", context!{username: u.username.clone()}))
                     },
                 }
             } else {
@@ -266,30 +308,6 @@ async fn admin(flash: Option<FlashMessage<'_>>, cookies: &CookieJar<'_>, conn:Db
             Err(Redirect::to("/login"))
         }
     }
-}
-
-#[get("/request")]
-async fn request_peer(cookies: &CookieJar<'_>, conn: DbConn) -> Redirect {
-    match validate(cookies, &conn).await {
-        Ok(u) => {
-            if u.permission >= 10 {
-                Peer::add(
-                    Peer {
-                        id: None,
-                        public_key: "public".to_string(),
-                        private_key: "private_key".to_string(),
-                        address: "10.0.0.1".to_string(),
-                        server_public_key: "new pub key".to_string(),
-                        server_address: "1.32.42.5".to_string(),
-                        owner_uuid: u.uuid.to_owned(),
-                        owner_name: u.name.to_string(),
-                    }, &conn
-                ).await;
-            }
-        },
-        Err(_) => {},
-    }
-    Redirect::to("/")
 }
 
 #[get("/contact")]
@@ -324,6 +342,7 @@ fn rocket() -> _ {
         .attach(Template::fairing())
         .attach(AdHoc::on_ignite("Run Migrations", run_migrations))
         .mount("/", FileServer::from(relative!("static")))
-        .mount("/", routes![index, dashboard, contact, login, request_peer, get_config, add_peer, get_all_user, admin, searchuser, deleteuser, searchpeer, deletepeer])
-        .mount("/auth", routes![userlogin, useradd, userlogout])
+        .mount("/", routes![index, dashboard, contact, login, admin, settings])
+        .mount("/", routes![get_config, add_peer, get_all_user, searchuser, deleteuser, searchpeer, deletepeer])
+        .mount("/auth", routes![userlogin, useradd, userlogout, changepassword, changeusername])
 }
