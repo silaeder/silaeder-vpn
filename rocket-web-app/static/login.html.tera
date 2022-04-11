@@ -7,7 +7,6 @@
     <title>Silaeder Vpn</title>
     <meta name="theme-color" content="#ffd25e">
     <link rel="stylesheet" href="assets/bootstrap/css/bootstrap.min.css">
-    <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="assets/fonts/ionicons.min.css">
     <link rel="stylesheet" href="assets/css/Article-List.css">
     <link rel="stylesheet" href="assets/css/Contact-Form-Clean.css">
@@ -19,7 +18,7 @@
 </head>
 
 <body>
-    <section class="login-dark">
+    <section class="login-dark" style="max-height: 100vh;">
         <form method="post" action="/auth/login">
             <h2 class="visually-hidden">Login Form</h2>
             <div class="illustration"><i class="icon ion-ios-locked-outline"></i></div>

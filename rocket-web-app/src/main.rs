@@ -26,7 +26,7 @@ use crate::utils::{validate, validate_password};
 use crate::user::{User, UserData, UserLoginData, UserQuery, UserPasswordMod, UserUsernameMod, UserDeleteForm};
 use crate::session::Session;
 use crate::peer::{Peer, PeerQuery};
-use std::fs::File;
+use std::fs::{self, File};
 use std::path::Path;
 use std::io::Write;
 
@@ -193,28 +193,31 @@ async fn changeusername(cookies: &CookieJar<'_>, usernameform: Form<UserUsername
     }
 }
 
-#[get("/config/<id>")]
-async fn get_config(cookies: &CookieJar<'_>, id: i32, conn: DbConn) -> Result<NamedFile, Redirect> {
+#[get("/config/<id>/<filename>")]
+async fn get_config(cookies: &CookieJar<'_>, id: i32, filename: String, conn: DbConn) -> Result<NamedFile, Redirect> {
     match Peer::get_peer(id, &conn).await {
         Ok(p) => {
             match validate(cookies, &conn).await {
                 Ok(u) => {
                     if u.uuid == p.owner_uuid {
-                        let sp = format!("cache_files/{}_{}.conf", p.owner_name, p.id.unwrap());
-                        {
-                            let mut file = File::create(Path::new(&sp)).unwrap();
-                            writeln!(&mut file, "[Interface]");
-                            writeln!(&mut file, "PrivateKey = {}", p.private_key);
-                            writeln!(&mut file, "Address = {}", p.address);
-                            writeln!(&mut file, "DNS = 1.1.1.1, 8.8.8.8");
-                            writeln!(&mut file, "");
-                            writeln!(&mut file, "[Peer]");
-                            writeln!(&mut file, "PublicKey = {}", p.server_public_key);
-                            writeln!(&mut file, "AllowedIPs = 0.0.0.0/0");
-                            writeln!(&mut file, "Endpoint = {}", p.server_address);
-                            writeln!(&mut file, "PersistentKeepalive = 20");
-                        }
-                        Ok(NamedFile::open(sp).await.ok().unwrap())
+                        let sp = format!("cache_files/{}_{}.conf", u.username, p.public_key[1..5].to_string());
+                        let mut file = File::create(Path::new(&sp)).unwrap();
+                        let config = format!(
+                            "[Interface]\n\
+                            PrivateKey = {}\n\
+                            Address = {}\n\
+                            DNS = 1.1.1.1, 8.8.8.8\n\
+                            \n\
+                            [Peer]\n\
+                            PublicKey = {}\n\
+                            AllowedIPs = 0.0.0.0/0\n\
+                            Endpoint = {}\n\
+                            PersistentKeepalive = 20",
+                            p.private_key, p.address, p.server_public_key, p.server_address);
+                        let _res = write!(&mut file, "{}", config);
+                        let nf = NamedFile::open(sp.clone()).await.ok().unwrap();
+                        let _res = fs::remove_file(sp.clone());
+                        Ok(nf)
                     } else {
                         Err(Redirect::to("/dashboard"))
                     }
@@ -256,7 +259,14 @@ async fn index() -> Redirect {
 async fn dashboard(cookies: &CookieJar<'_>, conn: DbConn) -> Result<Template, Redirect> {
     match validate(cookies, &conn).await {
         Ok(u) => {
-            Ok(Template::render("dashboard", context! {peers: Peer::get_all_for_user(u.uuid.clone(), &conn).await, username: u.name.clone(), admin: u.permission >= 10}))
+            Ok(Template::render("dashboard",
+                context! {
+                    peers: Peer::get_all_for_user(u.uuid.clone(), &conn).await,
+                    name: u.name.clone(),
+                    username: u.username.clone(),
+                    admin: u.permission >= 10
+                }
+            ))
         },
         Err(_) => {
             Err(Redirect::to("/login"))
@@ -268,7 +278,12 @@ async fn dashboard(cookies: &CookieJar<'_>, conn: DbConn) -> Result<Template, Re
 async fn settings(cookies: &CookieJar<'_>, conn: DbConn) -> Result<Template, Redirect> {
     match validate(cookies, &conn).await {
         Ok(u) => {
-            Ok(Template::render("settings", context! {username: u.username.clone()}))
+            Ok(Template::render("settings",
+                context! {
+                    name: u.name.clone(),
+                    username: u.username.clone()
+                }
+            ))
         },
         Err(_) => {
             Err(Redirect::to("/login"))
@@ -287,17 +302,36 @@ async fn admin(flash: Option<FlashMessage<'_>>, cookies: &CookieJar<'_>, conn:Db
                         if f.0 == "users" {
                             println!("{}", f.1.clone());
                             let deser: Vec<User> = serde_json::from_str(f.1.clone().as_str()).unwrap();
-                            Ok(Template::render("admin", context!{flash: (f.0.clone(), deser), username: u.username.clone()}))
+                            Ok(Template::render("admin",
+                                context! {
+                                    flash: (f.0.clone(), deser),
+                                    name: u.name.clone()
+                                }
+                            ))
                         } else if f.0 == "peers" {
                             println!("{}", f.1.clone());
                             let deser: Vec<Peer> = serde_json::from_str(f.1.clone().as_str()).unwrap();
-                            Ok(Template::render("admin", context!{flash: (f.0.clone(), deser), username: u.username.clone()}))
+                            Ok(Template::render("admin",
+                                context!{
+                                    flash: (f.0.clone(), deser),
+                                    name: u.name.clone()
+                                }
+                            ))
                         } else {
-                            Ok(Template::render("admin", context!{flash: (f.0.clone(), f.1.clone()), username: u.username.clone()}))
+                            Ok(Template::render("admin",
+                                context!{
+                                    flash: (f.0.clone(), f.1.clone()),
+                                    name: u.name.clone()
+                                }
+                            ))
                         }
                     },
                     None => {
-                        Ok(Template::render("admin", context!{username: u.username.clone()}))
+                        Ok(Template::render("admin", 
+                            context!{
+                                name: u.name.clone()
+                            }
+                        ))
                     },
                 }
             } else {
@@ -316,14 +350,21 @@ async fn contact() -> Template {
 }
 
 #[get("/login")]
-fn login(flash: Option<FlashMessage<>>) -> Template {
-    let flash = flash.map(FlashMessage::into_inner);
-    match flash {
-        Some(f) => {
-            Template::render("login", context!{flash: (f.0, f.1)})
+async fn login(cookies: &CookieJar<'_>, flash: Option<FlashMessage<'_>>, conn:DbConn) -> Result<Redirect, Template> {
+    match validate(cookies, &conn).await {
+        Ok(u) => {
+            Ok(Redirect::to("/dashboard"))
         },
-        None => {
-            Template::render("login", context!{})
+        Err(_) => {
+            let flash = flash.map(FlashMessage::into_inner);
+            match flash {
+                Some(f) => {
+                    Err(Template::render("login", context!{flash: (f.0, f.1)}))
+                },
+                None => {
+                    Err(Template::render("login", context!{}))
+                },
+            }
         },
     }
 }

@@ -22,10 +22,10 @@
         <div class="container"><a class="navbar-brand" href="/">Silaeder VPN</a><button data-bs-toggle="collapse" class="navbar-toggler" data-bs-target="#navcol-1"><span class="visually-hidden">Toggle navigation</span><span class="navbar-toggler-icon"></span></button>
             <div class="collapse navbar-collapse" id="navcol-1">
                 <ul class="navbar-nav me-auto">
-                    <li class="nav-item"><a class="nav-link disabled" href="/dashboard">Панель управления</a></li>
+                    <li class="nav-item"><a class="nav-link disabled" href="/dashboard" style="background: var(--bs-gray-400);">Панель управления</a></li>
                     <li class="nav-item"><a class="nav-link" href="/contact">Поддержка</a></li>
                     <li class="nav-item">{% if admin %}<a class="nav-link" href="/admin">Admin Panel</a>{% endif %}</li>
-                    <li class="nav-item"><a class="nav-link" href="/settings">{{ username }}</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/settings">{{ username }}(Настройки)</a></li>
                 </ul>
                 <form action="/auth/logout" method="post"><input class="form-control" type="hidden"><button class="btn btn-warning action-button" type="submit">Выйти</button></form>
             </div>
@@ -54,7 +54,7 @@
                         <div class="row text-center">
                             <div class="col"><code>{{ peer.server_public_key }}</code></div>
                         </div>
-                    </section><a href="/config/{{ peer.id }}" download="{{peer.owner_name}}_{{peer.id}}.conf"><button class="btn btn-outline-primary text-center" type="button">Скачать конфиг</button></a>
+                    </section><a href="/config/{{ peer.id }}/{{username}}.conf" download="{{username}}.conf"><button class="btn btn-outline-primary text-center" type="button">Скачать конфиг</button></a>
                 </div>{% endfor %}
             </div>
         </div>

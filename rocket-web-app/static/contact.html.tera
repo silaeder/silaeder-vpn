@@ -7,7 +7,6 @@
     <title>Silaeder Vpn</title>
     <meta name="theme-color" content="#ffd25e">
     <link rel="stylesheet" href="assets/bootstrap/css/bootstrap.min.css">
-    <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="assets/fonts/ionicons.min.css">
     <link rel="stylesheet" href="assets/css/Article-List.css">
     <link rel="stylesheet" href="assets/css/Contact-Form-Clean.css">
@@ -23,19 +22,22 @@
         <div class="container"><a class="navbar-brand" href="/">Silaeder VPN</a><button data-bs-toggle="collapse" class="navbar-toggler" data-bs-target="#navcol-1"><span class="visually-hidden">Toggle navigation</span><span class="navbar-toggler-icon"></span></button>
             <div class="collapse navbar-collapse" id="navcol-1">
                 <ul class="navbar-nav ms-auto">
-                    <li class="nav-item"><a class="nav-link disabled" href="/contact">Поддержка</a></li>
+                    <li class="nav-item"><a class="nav-link disabled" href="/contact" style="background: var(--bs-gray-400);">Поддержка</a></li>
                     <li class="nav-item"><a class="nav-link" href="/dashboard">Панель управления</a></li>
                 </ul>
             </div>
         </div>
     </nav>
+    <h5 class="text-center" style="color: var(--bs-red);">В данный момент функционал поддержки не реализован на 100%.</h5><a href="https://github.com/justdprroz/silaeder-vpn/issues" target="_blank">
+        <h5 class="text-center">Используйте&nbsp; Github для получения помощи</h5>
+    </a>
     <section class="contact-clean">
         <form method="post" action="/ask_support">
             <h2 class="text-center">Связь с поддержкой</h2>
             <div class="mb-3"><input class="form-control" type="text" name="name" placeholder="Кто вы"></div>
             <div class="mb-3"><input class="form-control" type="text" name="contact" placeholder="Ник в соцсети"></div>
             <div class="mb-3"><textarea class="form-control" name="message" placeholder="Чем вам помочь" rows="14"></textarea></div>
-            <div class="mb-3"><button class="btn btn-primary" type="submit">отправить</button></div>
+            <div class="mb-3"><button class="btn btn-light" type="button" style="background: #b2b2b2;">отправить</button></div>
         </form>
     </section>
     <script src="assets/bootstrap/js/bootstrap.min.js"></script>
