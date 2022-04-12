@@ -40,7 +40,7 @@
         <div class="col">
             <form method="post" action="/auth/change_username">
                 <h1>Смена имени пользователя</h1>
-                <p>Текущее имя пользователя: {{ username }}</p><input class="form-control" type="text" name="new_username" placeholder="Новое имя пользоваля">
+                <p>Текущее имя пользователя {{ username }}</p><input class="form-control" type="text" name="new_username" placeholder="Новое имя пользоваля">
                 <div class="text-center"><button class="btn btn-success" type="submit">Изменить имя пользователя</button></div>
             </form>
         </div>

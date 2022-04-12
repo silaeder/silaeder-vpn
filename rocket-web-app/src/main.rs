@@ -193,8 +193,8 @@ async fn changeusername(cookies: &CookieJar<'_>, usernameform: Form<UserUsername
     }
 }
 
-#[get("/config/<id>/<filename>")]
-async fn get_config(cookies: &CookieJar<'_>, id: i32, filename: String, conn: DbConn) -> Result<NamedFile, Redirect> {
+#[get("/config/<id>/<_filename>")]
+async fn get_config(cookies: &CookieJar<'_>, id: i32, _filename: String, conn: DbConn) -> Result<NamedFile, Redirect> {
     match Peer::get_peer(id, &conn).await {
         Ok(p) => {
             match validate(cookies, &conn).await {
@@ -345,14 +345,27 @@ async fn admin(flash: Option<FlashMessage<'_>>, cookies: &CookieJar<'_>, conn:Db
 }
 
 #[get("/contact")]
-async fn contact() -> Template {
-    Template::render("contact", context!{})
+async fn contact(cookies: &CookieJar<'_>, conn:DbConn) -> Template {
+    match validate(cookies, &conn).await {
+        Ok(u) => {
+            Template::render("contact",
+                context!{
+                    name: u.name.clone()
+                }
+            )
+        },
+        Err(_) => {
+            Template::render("contact",
+                context!{}
+            )
+        }
+    }
 }
 
 #[get("/login")]
 async fn login(cookies: &CookieJar<'_>, flash: Option<FlashMessage<'_>>, conn:DbConn) -> Result<Redirect, Template> {
     match validate(cookies, &conn).await {
-        Ok(u) => {
+        Ok(_) => {
             Ok(Redirect::to("/dashboard"))
         },
         Err(_) => {

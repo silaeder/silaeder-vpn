@@ -19,12 +19,12 @@
 
 <body>
     <nav class="navbar navbar-light navbar-expand-lg navigation-clean-button">
-        <div class="container"><a class="navbar-brand" href="/">Silaeder VPN</a><button data-bs-toggle="collapse" class="navbar-toggler" data-bs-target="#navcol-1"><span class="visually-hidden">Toggle navigation</span><span class="navbar-toggler-icon"></span></button>
+        <div class="container"><a class="navbar-brand" href="/">Silaeder VPN</a>
             <div class="collapse navbar-collapse" id="navcol-1">
                 <ul class="navbar-nav me-auto">
-                    <li class="nav-item"><a class="nav-link disabled" href="/admin" style="background: var(--bs-gray-400);">Admin panel</a></li>
+                    <li class="nav-item"><a class="nav-link disabled" href="/admin" style="background: var(--bs-gray-400);">Admin panel<br></a></li>
                     <li class="nav-item"><a class="nav-link" href="/dashboard">Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/settings">{{ username }}(settings)</a></li>
+                    <li class="nav-item" style="background: var(--bs-gray-400);"><a class="nav-link" href="/settings">{{ name }}(Settings)</a></li>
                 </ul>
                 <form action="/auth/logout" method="post"><input class="form-control" type="hidden"><button class="btn btn-warning action-button" type="submit">Выйти</button></form>
             </div>
