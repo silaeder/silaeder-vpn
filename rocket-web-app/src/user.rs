@@ -11,7 +11,6 @@ mod schema {
             hashed_password -> Text,
             permission -> Integer,
             uuid -> Text,
-            session -> Nullable<Integer>,
         }
     }
 }
@@ -35,7 +34,6 @@ pub struct User {
     pub hashed_password: String,
     pub permission: i32,
     pub uuid: String,
-    pub session: Option<i32>,
 }
 
 #[derive(Debug, FromForm)]
@@ -96,7 +94,6 @@ impl User {
                 hashed_password: hash_password(user_data.password),
                 permission: user_data.permission,
                 uuid: user_uuid_copy,
-                session: None,
             };
             let _ = diesel::insert_into(users::table).values(&u).execute(c);
         }).await;

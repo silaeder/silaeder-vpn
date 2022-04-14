@@ -1,12 +1,7 @@
 [global]
 template_dir = "static"
-
-address = "192.168.1.4"
-port = 443
-
-[global.tls]
-certs = "private/justdprroz.crt"
-key = "private/justdprroz.key"
+address = "127.0.0.1"
+port = 44444
 
 [global.databases.sqlite_database]
 url = "db/db.sqlite"

@@ -14,21 +14,20 @@ CREATE TABLE Users (
     email VARCHAR NOT NULL,
     hashed_password VARCHAR NOT NULL,
     permission INTEGER NOT NULL,
-    uuid VARCHAR NOT NULL,
-    session INTEGER
+    uuid VARCHAR NOT NULL
 );
 
 -- Add Admin account
 INSERT INTO Users
 VALUES (
     NULL,
-    "Dmitri Proskuriakov",
-    "JustDprroz",
-    "dmitri.proskuriakov@gmail.com",
-    "$pbkdf2-sha256$i=10000,l=32$pp8JWbAvLiDGkxp9iQbzww$a33xwXw6INY+J87XaJP7At07lMlMh5rh3xHQI8R6LrU",
+    "administrator",
+    "admin",
+    "admin@silaeder.vpn",
+    -- Hash of "adminpassword"
+    "$pbkdf2-sha256$i=10000,l=32$FMlgbA/mXH5IMhlWwywsNw$8ZYSqomcW9FmU+lftD0fLKCwPIZN3uJSHLvo+i4adek",
     "10",
-    "844a3466-85d1-4674-818e-f3d3764378de",
-    NULL
+    "b26207db-bcf3-4442-ae79-41ec3e5cc9b5"
 );
 
 -- Create table for servers
