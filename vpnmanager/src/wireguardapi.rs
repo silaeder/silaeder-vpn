@@ -1,5 +1,5 @@
-use std::io::{Write, prelude::*};
 use std::fs::OpenOptions;
+use std::io::{prelude::*, Write};
 use std::process::{Command, Stdio};
 
 static WORKINGDIR: &'static str = "/etc/wireguard";
@@ -9,7 +9,8 @@ pub fn generate_keys() -> (String, String) {
     let process = Command::new("wg")
         .arg("genkey")
         .stdout(Stdio::piped())
-        .spawn().unwrap();
+        .spawn()
+        .unwrap();
 
     let mut buffer = String::new();
     process.stdout.unwrap().read_to_string(&mut buffer).unwrap();
@@ -20,9 +21,14 @@ pub fn generate_keys() -> (String, String) {
         .arg("pubkey")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .spawn().unwrap();
+        .spawn()
+        .unwrap();
 
-    process.stdin.unwrap().write_all(private_key.as_bytes()).unwrap();
+    process
+        .stdin
+        .unwrap()
+        .write_all(private_key.as_bytes())
+        .unwrap();
 
     let mut buffer = String::new();
     process.stdout.unwrap().read_to_string(&mut buffer).unwrap();
@@ -40,7 +46,7 @@ pub fn dump_config(conf: String) -> () {
         .open(format!("{}/{}.conf", WORKINGDIR, INTERFACE_NAME))
         .unwrap();
 
-    writeln!(file, "{}", conf);
+    writeln!(file, "{}", conf).unwrap();
 }
 
 pub fn sync_config() -> () {
@@ -48,12 +54,13 @@ pub fn sync_config() -> () {
         .arg("strip")
         .arg(INTERFACE_NAME)
         .stdout(Stdio::piped())
-        .spawn().unwrap();
-    
+        .spawn()
+        .unwrap();
+
     let mut buffer = String::new();
     process.stdout.unwrap().read_to_string(&mut buffer).unwrap();
     let config = buffer.clone();
-    
+
     let mut file = OpenOptions::new()
         .create(true)
         .append(false)
@@ -61,12 +68,13 @@ pub fn sync_config() -> () {
         .open("storage/tmp")
         .unwrap();
 
-    writeln!(file, "{}", config);
+    writeln!(file, "{}", config).unwrap();
 
     let _process = Command::new("wg")
         .arg("addconf")
         .arg(INTERFACE_NAME)
         .arg("storage/tmp")
         .stdin(Stdio::piped())
-        .spawn().unwrap();
+        .spawn()
+        .unwrap();
 }

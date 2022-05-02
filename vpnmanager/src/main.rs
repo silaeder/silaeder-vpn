@@ -1,22 +1,43 @@
+#[macro_use]
+extern crate rocket;
 
-mod wireguardapi;
 mod servermanager;
+mod webinterface;
+mod wireguardapi;
+use std::sync::Mutex;
 
-use wireguardapi::{generate_keys, dump_config, sync_config};
-use servermanager::{Server};
-
-fn main() {
-    let res = generate_keys();
-    let mut s: Server = Server::new(res.0, res.1, String::from("justdprroz.ru"));
-
-    let mut ids: Vec<u64> = Vec::new();
-
-    for _i in 0..253 {
-        ids.push(s.new_peer());
-    }
-    
-    s.dump_to_json("storage/server_dump.json".to_string());
-
-    dump_config(s.get_server_config("55000".to_string(), "enp6s0".to_string()));
-    sync_config();
+#[rocket::main]
+async fn main() {
+    let res = wireguardapi::generate_keys();
+    let s = Mutex::new(servermanager::Server::new(
+        String::from("55000"),
+        String::from("enp6s0"),
+        res.0,
+        res.1,
+        String::from("justdprroz.ru"),
+    ));
+    let _ = rocket::build()
+        .manage(s)
+        .mount("/", routes![webinterface::index])
+        .mount(
+            "/wg",
+            routes![
+                webinterface::wg::generate_keys,
+                webinterface::wg::dump_config,
+                webinterface::wg::sync_config
+            ],
+        )
+        .mount(
+            "/manage",
+            routes![
+                webinterface::server::new_peer,
+                webinterface::server::get_server_config,
+                webinterface::server::get_client_config,
+                webinterface::server::dump_to_json,
+                webinterface::server::dump_to_file,
+                webinterface::server::load_from_file
+            ],
+        )
+        .launch()
+        .await;
 }
