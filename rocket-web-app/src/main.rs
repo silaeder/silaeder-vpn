@@ -10,16 +10,20 @@ mod session;
 mod user;
 mod server;
 mod peer;
+mod servermanager;
+mod webinterface;
+mod wireguardapi;
 
+use rocket::{Request, Response};
 use rocket::{Rocket, Build};
-use rocket::fairing::AdHoc;
+use rocket::fairing::{Fairing, Info, Kind, AdHoc};
 use rocket::response::{Flash, Redirect};
 use rocket::fs::NamedFile;
 use rocket::request::FlashMessage;
 use rocket::form::Form;
 use rocket::fs::{FileServer, relative};
 use rocket::post;
-use rocket::http::{Cookie, CookieJar};
+use rocket::http::{Cookie, CookieJar, Header};
 use rocket_dyn_templates::{Template};
 
 use crate::utils::{validate, validate_password};
@@ -29,6 +33,26 @@ use crate::peer::{Peer, PeerQuery};
 use std::fs::{self, File};
 use std::path::Path;
 use std::io::Write;
+use std::sync::Mutex;
+
+pub struct CORS;
+
+#[rocket::async_trait]
+impl Fairing for CORS {
+    fn info(&self) -> Info {
+        Info {
+            name: "Add CORS headers to responses",
+            kind: Kind::Response
+        }
+    }
+
+    async fn on_response<'r>(&self, _request: &'r Request<'_>, response: &mut Response<'r>) {
+        response.set_header(Header::new("Access-Control-Allow-Origin", "http://192.168.1.4:3000"));
+        response.set_header(Header::new("Access-Control-Allow-Methods", "POST, GET, PATCH, OPTIONS"));
+        response.set_header(Header::new("Access-Control-Allow-Headers", "*"));
+        response.set_header(Header::new("Access-Control-Allow-Credentials", "true"));
+    }
+}
 
 #[database("sqlite_database")]
 pub struct DbConn(diesel::SqliteConnection);
@@ -389,14 +413,85 @@ async fn run_migrations(rocket: Rocket<Build>) -> Rocket<Build> {
     rocket
 }
 
-#[launch]
-fn rocket() -> _ {
-    rocket::build()
+// #[launch]
+// fn rocket() -> _ {
+//     rocket::build()
+//         .attach(DbConn::fairing())
+//         .attach(Template::fairing())
+//         .attach(AdHoc::on_ignite("Run Migrations", run_migrations))
+//         .mount("/", FileServer::from(relative!("static")))
+//         .mount("/", routes![index, dashboard, contact, login, admin, settings])
+//         .mount("/", routes![get_config, add_peer, get_all_user, searchuser, deleteuser, searchpeer, deletepeer])
+//         .mount("/auth", routes![userlogin, useradd, userlogout, changepassword, changeusername])
+// }
+
+#[rocket::main]
+async fn main() {
+
+    let res = wireguardapi::generate_keys();
+    let s = Mutex::new(servermanager::Server::new(
+        String::from("55000"),
+        String::from("enp6s0"),
+        res.0,
+        res.1,
+        String::from("justdprroz.ru"),
+    ));
+
+    let _ = rocket::build()
+        .manage(s)
         .attach(DbConn::fairing())
         .attach(Template::fairing())
         .attach(AdHoc::on_ignite("Run Migrations", run_migrations))
-        .mount("/", FileServer::from(relative!("static")))
-        .mount("/", routes![index, dashboard, contact, login, admin, settings])
-        .mount("/", routes![get_config, add_peer, get_all_user, searchuser, deleteuser, searchpeer, deletepeer])
-        .mount("/auth", routes![userlogin, useradd, userlogout, changepassword, changeusername])
+        .mount(
+            // serve static js and css
+            "/",
+            FileServer::from(relative!("static"))
+        )
+        .mount(
+            // html render
+            "/",
+            routes![index, dashboard, contact, login, admin, settings]
+        )
+        .mount(
+            // general api for management 
+            "/", 
+            routes![get_config, add_peer, get_all_user, searchuser, deleteuser, searchpeer, deletepeer]
+        )
+        .mount(
+            // auth api 
+            "/auth", 
+            routes![userlogin, useradd, userlogout, changepassword, changeusername]
+        )
+        .mount(
+            // api status page
+            "/api",
+            routes![
+                webinterface::index,
+                webinterface::send_options
+            ]
+        )
+        .mount(
+            // wireguard api
+            "/api/wg",
+            routes![
+                webinterface::wg::generate_keys,
+                webinterface::wg::dump_config,
+                webinterface::wg::sync_config,
+            ],
+        )
+        .mount(
+            // server info manager
+            "/api/manage",
+            routes![
+                webinterface::server::new_peer,
+                webinterface::server::get_server_config,
+                webinterface::server::get_client_config,
+                webinterface::server::dump_to_json,
+                webinterface::server::dump_to_file,
+                webinterface::server::load_from_file
+            ],
+        )
+        .attach(CORS)
+        .launch()
+        .await;
 }
