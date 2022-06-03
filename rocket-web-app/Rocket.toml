@@ -3,5 +3,5 @@ template_dir = "static"
 address = "127.0.0.1"
 port = 44444
 
-[global.databases.sqlite_database]
-url = "db/db.sqlite"
+[global.databases]
+sqlite_database = {url = "db/db.sqlite"}
