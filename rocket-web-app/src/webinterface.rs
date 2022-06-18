@@ -73,12 +73,13 @@ pub mod server {
     use rocket::State;
     use std::sync::Mutex;
 
-    #[post("/new_peer")]
+    #[post("/new_peer/<info>")]
     pub fn new_peer(
         server: &State<Mutex<servermanager::Server>>,
+        info: String,
         _token: crate::webinterface::Token,
     ) -> String {
-        server.lock().unwrap().new_peer()
+        server.lock().unwrap().new_peer(info)
     }
 
     #[get("/get_server_config")]

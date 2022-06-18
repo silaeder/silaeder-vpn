@@ -36,6 +36,7 @@ pub struct Server {
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
 pub struct Client {
     _id: u64,
+    info: String,
     public_key: String,
     private_key: String,
     address: String,
@@ -96,10 +97,11 @@ impl Server {
         }
     }
 
-    pub fn new_peer(&mut self) -> String {
+    pub fn new_peer(&mut self, info: String) -> String {
         let key_pair = wireguardapi::generate_keys();
         let c = Client {
             _id: self.clients.len() as u64,
+            info: info,
             public_key: key_pair.1,
             private_key: key_pair.0,
             address: format!("10.0.{}.{}", SUBNET, 2 + self.clients.len() as u64),
