@@ -4,6 +4,7 @@ use std::fs::OpenOptions;
 use std::io::{prelude::*, Write};
 
 pub static SERVER_DUMP_FILE: &'static str = "storage/server_dump.json";
+pub static SUBNET: i32 = 54;
 
 #[derive(Debug)]
 pub struct Interface {
@@ -99,9 +100,9 @@ impl Server {
         let key_pair = wireguardapi::generate_keys();
         let c = Client {
             _id: self.clients.len() as u64,
-            public_key: key_pair.0,
-            private_key: key_pair.1,
-            address: format!("10.0.0.{}", 2 + self.clients.len() as u64),
+            public_key: key_pair.1,
+            private_key: key_pair.0,
+            address: format!("10.0.{}.{}", SUBNET, 2 + self.clients.len() as u64),
         };
         self.clients.push(c);
         self.dump_to_file(SERVER_DUMP_FILE.to_string());
@@ -156,7 +157,7 @@ impl Server {
     pub fn as_interface(&self) -> Interface {
         Interface {
             private_key: self.private_key.clone(),
-            address: "10.0.0.1/32".to_string(),
+            address: format!("10.0.{SUBNET}.1/32"),
             listen_port: Some(self.port.clone()),
             post_up: Some(format!("iptables -A FORWARD -i %i -j ACCEPT; iptables -t nat -A POSTROUTING -o {} -j MASQUERADE", self.nic)),
             post_down: Some(format!("iptables -D FORWARD -i %i -j ACCEPT; iptables -t nat -A POSTROUTING -o {} -j MASQUERADE", self.nic)),
@@ -168,7 +169,7 @@ impl Server {
         Peer {
             public_key: self.public_key.clone(),
             allowed_ips: "0.0.0.0/0".to_string(),
-            endpoint: Some(self.address.clone()),
+            endpoint: Some(self.address.clone() + &self.port.clone()),
         }
     }
 }

@@ -420,8 +420,8 @@ async fn main() {
     let s = Mutex::new(servermanager::Server::new(
         String::from("1303"),
         String::from("enp37s0"),
-        res.0,
         res.1,
+        res.0,
         String::from("justdprroz.ru"),
     ));
 
