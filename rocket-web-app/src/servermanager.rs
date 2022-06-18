@@ -169,7 +169,7 @@ impl Server {
         Peer {
             public_key: self.public_key.clone(),
             allowed_ips: "0.0.0.0/0".to_string(),
-            endpoint: Some(self.address.clone() + &self.port.clone()),
+            endpoint: Some(format!("{}:{}", self.address.clone(), &self.port.clone())),
         }
     }
 }
