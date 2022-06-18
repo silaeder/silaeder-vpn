@@ -2,8 +2,8 @@ use std::fs::OpenOptions;
 use std::io::{prelude::*, Write};
 use std::process::{Command, Stdio};
 
-static WORKINGDIR: &'static str = "/etc/wireguard";
-static INTERFACE_NAME: &'static str = "wg0";
+pub static WORKINGDIR: &'static str = "/etc/wireguard";
+pub static INTERFACE_NAME: &'static str = "wg-vpn";
 
 pub fn generate_keys() -> (String, String) {
     let process = Command::new("wg")

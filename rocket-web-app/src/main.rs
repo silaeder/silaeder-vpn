@@ -413,25 +413,13 @@ async fn run_migrations(rocket: Rocket<Build>) -> Rocket<Build> {
     rocket
 }
 
-// #[launch]
-// fn rocket() -> _ {
-//     rocket::build()
-//         .attach(DbConn::fairing())
-//         .attach(Template::fairing())
-//         .attach(AdHoc::on_ignite("Run Migrations", run_migrations))
-//         .mount("/", FileServer::from(relative!("static")))
-//         .mount("/", routes![index, dashboard, contact, login, admin, settings])
-//         .mount("/", routes![get_config, add_peer, get_all_user, searchuser, deleteuser, searchpeer, deletepeer])
-//         .mount("/auth", routes![userlogin, useradd, userlogout, changepassword, changeusername])
-// }
-
 #[rocket::main]
 async fn main() {
 
     let res = wireguardapi::generate_keys();
     let s = Mutex::new(servermanager::Server::new(
-        String::from("55000"),
-        String::from("enp6s0"),
+        String::from("1303"),
+        String::from("enp37s0"),
         res.0,
         res.1,
         String::from("justdprroz.ru"),

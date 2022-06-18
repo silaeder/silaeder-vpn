@@ -3,6 +3,8 @@ use std::fmt;
 use std::fs::OpenOptions;
 use std::io::{prelude::*, Write};
 
+pub static SERVER_DUMP_FILE: &'static str = "storage/server_dump.json";
+
 #[derive(Debug)]
 pub struct Interface {
     private_key: String,
@@ -93,7 +95,7 @@ impl Server {
         }
     }
 
-    pub fn new_peer(&mut self) -> u64 {
+    pub fn new_peer(&mut self) -> String {
         let key_pair = wireguardapi::generate_keys();
         let c = Client {
             _id: self.clients.len() as u64,
@@ -102,7 +104,10 @@ impl Server {
             address: format!("10.0.0.{}", 2 + self.clients.len() as u64),
         };
         self.clients.push(c);
-        (self.clients.len() - 1) as u64
+        self.dump_to_file(SERVER_DUMP_FILE.to_string());
+        wireguardapi::dump_config(self.get_server_config());
+        wireguardapi::sync_config();
+        self.get_client_config((self.clients.len() - 1) as u64)
     }
 
     pub fn get_server_config(&self) -> String {

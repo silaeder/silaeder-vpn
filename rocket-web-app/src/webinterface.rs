@@ -77,8 +77,8 @@ pub mod server {
     pub fn new_peer(
         server: &State<Mutex<servermanager::Server>>,
         _token: crate::webinterface::Token,
-    ) -> content::Json<String> {
-        content::Json(serde_json::to_string_pretty(&server.lock().unwrap().new_peer()).unwrap())
+    ) -> String {
+        server.lock().unwrap().new_peer()
     }
 
     #[get("/get_server_config")]
@@ -114,7 +114,7 @@ pub mod server {
         server
             .lock()
             .unwrap()
-            .dump_to_file("storage/server_dump.json".to_string())
+            .dump_to_file(servermanager::SERVER_DUMP_FILE.to_string())
     }
 
     #[post("/load_from_file")]
@@ -125,7 +125,7 @@ pub mod server {
         server
             .lock()
             .unwrap()
-            .load_from_file("storage/server_dump.json".to_string())
+            .load_from_file(servermanager::SERVER_DUMP_FILE.to_string())
     }
 }
 
