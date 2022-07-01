@@ -1,24 +1,39 @@
 #[macro_use] extern crate rocket;
+#[macro_use] extern crate lazy_static;
 
 mod servermanager;
 mod webinterface;
 mod wireguardapi;
-use std::sync::Mutex;
 
-static SERVER_PORT: &'static str = "4456";
-static IP_INTERFACE_NAME: &'static str = "enp37s0";
-static PUBLIC_ADDRESS: &'static str = "192.168.1.4";
+use std::sync::Mutex;
+use std::fs;
+
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
+pub struct Config {
+    server_port: String,
+    ip_interface_name: String,
+    public_address: String,
+    auth_token: String,
+    server_dump_file: String,
+    subnet: i64,
+    wg_workingdir: String,
+    wg_interface_name: String,
+}
+
+lazy_static! {
+    pub static ref CONFIG: Config = toml::from_str(&fs::read_to_string("VPN.toml").unwrap()).unwrap();
+}
 
 #[rocket::main]
 async fn main() {
 
     let res = wireguardapi::generate_keys();
     let s = Mutex::new(servermanager::Server::new(
-        String::from(SERVER_PORT),
-        String::from(IP_INTERFACE_NAME),
+        String::from(&CONFIG.server_port),
+        String::from(&CONFIG.ip_interface_name),
         res.1,
         res.0,
-        String::from(PUBLIC_ADDRESS),
+        String::from(&CONFIG.public_address),
     ));
 
     let _ = rocket::build()

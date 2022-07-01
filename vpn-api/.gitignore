@@ -21,3 +21,6 @@
 # Some config files
 # Rocket config
 Rocket.toml
+
+# VPN config
+VPN.toml

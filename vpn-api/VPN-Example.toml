@@ -1,0 +1,8 @@
+server_port = "4444"
+ip_interface_name = "eth0"
+public_address = "127.0.0.1"
+auth_token = "OJQ6rCDXRyIj498hTjSIsG+Kkl1xeGUoV3zHhulHCg0="
+server_dump_file = "storage/server_dump.json"
+subnet = 0
+wg_workingdir = "/etc/wireguard"
+wg_interface_name = "wg-vpn"

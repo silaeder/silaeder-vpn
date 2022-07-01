@@ -3,8 +3,9 @@ use std::fmt;
 use std::fs::OpenOptions;
 use std::io::{prelude::*, Write};
 
-pub static SERVER_DUMP_FILE: &'static str = "storage/server_dump.json";
-pub static SUBNET: i32 = 54;
+// pub static SERVER_DUMP_FILE: &'static str = "storage/server_dump.json";
+
+use crate::CONFIG;
 
 #[derive(Debug)]
 pub struct Interface {
@@ -104,10 +105,10 @@ impl Server {
             info: info,
             public_key: key_pair.1,
             private_key: key_pair.0,
-            address: format!("10.0.{}.{}", SUBNET, 2 + self.clients.len() as u64),
+            address: format!("10.0.{}.{}", &CONFIG.subnet, 2 + self.clients.len() as u64),
         };
         self.clients.push(c);
-        self.dump_to_file(SERVER_DUMP_FILE.to_string());
+        self.dump_to_file(CONFIG.server_dump_file.to_string());
         self.get_client_config_by_id(self.clients.len() - 1)
     }
 
@@ -174,7 +175,7 @@ impl Server {
     pub fn as_interface(&self) -> Interface {
         Interface {
             private_key: self.private_key.clone(),
-            address: format!("10.0.{SUBNET}.1/32"),
+            address: format!("10.0.{}.1/32", &CONFIG.subnet),
             listen_port: Some(self.port.clone()),
             post_up: Some(format!("iptables -A FORWARD -i %i -j ACCEPT; iptables -t nat -A POSTROUTING -o {} -j MASQUERADE", self.nic)),
             post_down: Some(format!("iptables -D FORWARD -i %i -j ACCEPT; iptables -t nat -A POSTROUTING -o {} -j MASQUERADE", self.nic)),

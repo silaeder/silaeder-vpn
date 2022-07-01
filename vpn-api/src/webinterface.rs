@@ -2,7 +2,7 @@
 use rocket::http::Status;
 use rocket::request::{self, FromRequest, Request};
 
-static AUTH_TOKEN: &'static str = "OJQ6rCDXRyIj498hTjSIsG+Kkl1xeGUoV3zHhulHCg0=";
+use crate::CONFIG;
 
 pub struct Token(String);
 
@@ -21,7 +21,7 @@ impl<'r> FromRequest<'r> for Token {
                 let auth_str = auth_header.to_string();
                 if auth_str.starts_with("Bearer") {
                     let token = auth_str[6..auth_str.len()].trim();
-                    if token == AUTH_TOKEN {
+                    if token == CONFIG.auth_token {
                         request::Outcome::Success(Token(token.to_string()))
                     } else {
                         request::Outcome::Failure((Status::Unauthorized, ApiTokenError::Invalid))
@@ -48,13 +48,13 @@ pub mod wg {
     use rocket::response::content;
     use rocket::State;
     use std::sync::Mutex;
-
+    
     #[get("/generate_keys")]
     pub fn generate_keys(_token: crate::webinterface::Token) -> content::Json<String> {
         let key_tuple = wireguardapi::generate_keys();
         content::Json(serde_json::to_string_pretty(&key_tuple).unwrap())
     }
-
+    
     
     #[post("/restart")]
     pub fn restart(_token: crate::webinterface::Token) -> () {
@@ -68,7 +68,7 @@ pub mod wg {
     ) -> () {
         wireguardapi::dump_config(server.lock().unwrap().get_server_config())
     }
-
+    
     // Don't Use Temporary deprecated
     #[post("/sync_config")]
     pub fn sync_config(_token: crate::webinterface::Token) -> () {
@@ -82,7 +82,8 @@ pub mod server {
     use rocket::response::content;
     use rocket::State;
     use std::sync::Mutex;
-
+    use crate::CONFIG;
+    
     #[post("/new_peer/<info>")]
     pub fn new_peer(
         server: &State<Mutex<servermanager::Server>>,
@@ -91,7 +92,7 @@ pub mod server {
     ) -> String {
         server.lock().unwrap().new_peer(info)
     }
-
+    
     #[get("/get_server_config")]
     pub fn get_server_config(
         server: &State<Mutex<servermanager::Server>>,
@@ -134,7 +135,7 @@ pub mod server {
         server
             .lock()
             .unwrap()
-            .dump_to_file(servermanager::SERVER_DUMP_FILE.to_string())
+            .dump_to_file(CONFIG.server_dump_file.to_string())
     }
 
     #[post("/load_from_file")]
@@ -145,7 +146,7 @@ pub mod server {
         server
             .lock()
             .unwrap()
-            .load_from_file(servermanager::SERVER_DUMP_FILE.to_string())
+            .load_from_file(CONFIG.server_dump_file.to_string())
     }
 }
 

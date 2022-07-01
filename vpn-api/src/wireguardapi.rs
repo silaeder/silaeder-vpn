@@ -2,8 +2,7 @@ use std::fs::OpenOptions;
 use std::io::{prelude::*, Write};
 use std::process::{Command, Stdio};
 
-pub static WORKINGDIR: &'static str = "/etc/wireguard";
-pub static WG_INTERFACE_NAME: &'static str = "wg-vpn";
+use crate::CONFIG;
 
 pub fn generate_keys() -> (String, String) {
     let process = Command::new("wg")
@@ -43,7 +42,7 @@ pub fn dump_config(conf: String) -> () {
         .create(true)
         .write(true)
         .truncate(true)
-        .open(format!("{}/{}.conf", WORKINGDIR, WG_INTERFACE_NAME))
+        .open(format!("{}/{}.conf", CONFIG.wg_workingdir, CONFIG.wg_interface_name))
         .unwrap();
 
     writeln!(file, "{}", conf).unwrap();
@@ -53,7 +52,7 @@ pub fn dump_config(conf: String) -> () {
 pub fn sync_config() -> () {
     let process = Command::new("wg-quick")
         .arg("strip")
-        .arg(WG_INTERFACE_NAME)
+        .arg(CONFIG.wg_interface_name.to_string())
         .stdout(Stdio::piped())
         .spawn()
         .unwrap();
@@ -73,7 +72,7 @@ pub fn sync_config() -> () {
 
     let _process = Command::new("wg")
         .arg("addconf")
-        .arg(WG_INTERFACE_NAME)
+        .arg(CONFIG.wg_interface_name.to_string())
         .arg("storage/tmp")
         .stdin(Stdio::piped())
         .spawn()
@@ -83,13 +82,13 @@ pub fn sync_config() -> () {
 pub fn restart() -> () {
     let _process = Command::new("wg-quick")
         .arg("down")
-        .arg(WG_INTERFACE_NAME)
+        .arg(CONFIG.wg_interface_name.to_string())
         .spawn()
         .unwrap();
 
     let _process = Command::new("wg-quick")
         .arg("up")
-        .arg(WG_INTERFACE_NAME)
+        .arg(CONFIG.wg_interface_name.to_string())
         .spawn()
         .unwrap();
 }
