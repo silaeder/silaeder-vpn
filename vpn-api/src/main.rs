@@ -3,19 +3,22 @@
 mod servermanager;
 mod webinterface;
 mod wireguardapi;
-
 use std::sync::Mutex;
+
+static SERVER_PORT: &'static str = "4456";
+static IP_INTERFACE_NAME: &'static str = "enp37s0";
+static PUBLIC_ADDRESS: &'static str = "192.168.1.4";
 
 #[rocket::main]
 async fn main() {
 
     let res = wireguardapi::generate_keys();
     let s = Mutex::new(servermanager::Server::new(
-        String::from("1303"),
-        String::from("enp37s0"),
+        String::from(SERVER_PORT),
+        String::from(IP_INTERFACE_NAME),
         res.1,
         res.0,
-        String::from("justdprroz.ru"),
+        String::from(PUBLIC_ADDRESS),
     ));
 
     let _ = rocket::build()
