@@ -2,8 +2,8 @@ use std::fs::OpenOptions;
 use std::io::{prelude::*, Write};
 use std::process::{Command, Stdio};
 
-static WORKINGDIR: &'static str = "/etc/wireguard";
-static INTERFACE_NAME: &'static str = "wg0";
+pub static WORKINGDIR: &'static str = "/etc/wireguard";
+pub static INTERFACE_NAME: &'static str = "wg-vpn";
 
 pub fn generate_keys() -> (String, String) {
     let process = Command::new("wg")
@@ -41,14 +41,15 @@ pub fn generate_keys() -> (String, String) {
 pub fn dump_config(conf: String) -> () {
     let mut file = OpenOptions::new()
         .create(true)
-        .append(false)
         .write(true)
+        .truncate(true)
         .open(format!("{}/{}.conf", WORKINGDIR, INTERFACE_NAME))
         .unwrap();
 
     writeln!(file, "{}", conf).unwrap();
 }
 
+// TODO: FIXME: Sync don't work properly
 pub fn sync_config() -> () {
     let process = Command::new("wg-quick")
         .arg("strip")
@@ -63,8 +64,8 @@ pub fn sync_config() -> () {
 
     let mut file = OpenOptions::new()
         .create(true)
-        .append(false)
         .write(true)
+        .truncate(true)
         .open("storage/tmp")
         .unwrap();
 
@@ -75,6 +76,20 @@ pub fn sync_config() -> () {
         .arg(INTERFACE_NAME)
         .arg("storage/tmp")
         .stdin(Stdio::piped())
+        .spawn()
+        .unwrap();
+}
+
+pub fn restart() -> () {
+    let _process = Command::new("wg-quick")
+        .arg("down")
+        .arg(INTERFACE_NAME)
+        .spawn()
+        .unwrap();
+
+    let _process = Command::new("wg-quick")
+        .arg("up")
+        .arg(INTERFACE_NAME)
         .spawn()
         .unwrap();
 }
