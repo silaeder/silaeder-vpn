@@ -4,9 +4,11 @@
 mod servermanager;
 mod webinterface;
 mod wireguardapi;
+mod monitoring;
 
 use std::sync::Mutex;
 use std::fs;
+use std::path::Path;
 
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
 pub struct Config {
@@ -18,6 +20,7 @@ pub struct Config {
     subnet: i64,
     wg_workingdir: String,
     wg_interface_name: String,
+    monitoring_data_file: String,
 }
 
 lazy_static! {
@@ -26,15 +29,27 @@ lazy_static! {
 
 #[rocket::main]
 async fn main() {
+    let s: Mutex<servermanager::Server>;
 
-    let res = wireguardapi::generate_keys();
-    let s = Mutex::new(servermanager::Server::new(
-        String::from(&CONFIG.server_port),
-        String::from(&CONFIG.ip_interface_name),
-        res.1,
-        res.0,
-        String::from(&CONFIG.public_address),
-    ));
+    if !Path::new(&CONFIG.server_dump_file).exists() {
+        let res = wireguardapi::generate_keys();
+        s = Mutex::new(servermanager::Server::new(
+            String::from(&CONFIG.server_port),
+            String::from(&CONFIG.ip_interface_name),
+            res.1,
+            res.0,
+            String::from(&CONFIG.public_address),
+        ));
+    } else {
+        s = Mutex::new(servermanager::Server::empty());
+        s
+            .lock()
+            .unwrap()
+            .load_from_file(CONFIG.server_dump_file.to_string());
+    }
+
+    wireguardapi::dump_config(s.lock().unwrap().get_server_config());
+    wireguardapi::restart();
 
     let _ = rocket::build()
         .manage(s)
@@ -68,6 +83,12 @@ async fn main() {
                 webinterface::server::dump_to_file,
                 webinterface::server::load_from_file
             ],
+        )
+        .mount(
+            "/api/data",
+            routes![
+                webinterface::monitoring::get_stats
+            ]
         )
         // .attach(CORS)
         .launch()

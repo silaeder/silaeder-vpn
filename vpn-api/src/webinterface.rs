@@ -150,6 +150,14 @@ pub mod server {
     }
 }
 
+pub mod monitoring {
+    use crate::monitoring;
+
+    #[get("/get_stats")]
+    pub fn get_stats(_token: crate::webinterface::Token) -> () {
+        monitoring::get_usage_data();
+    }
+}
 // #[options("/<_..>")]
 // pub fn send_options() {
 

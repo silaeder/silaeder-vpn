@@ -98,6 +98,17 @@ impl Server {
         }
     }
 
+    pub fn empty() -> Server {
+        Server{
+            port: String::new(),
+            nic: String::new(),
+            public_key: String::new(),
+            private_key: String::new(),
+            address: String::new(),
+            clients: Vec::new(),
+        }
+    }
+
     pub fn new_peer(&mut self, info: String) -> String {
         let key_pair = wireguardapi::generate_keys();
         let c = Client {
