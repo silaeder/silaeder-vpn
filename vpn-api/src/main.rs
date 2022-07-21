@@ -21,6 +21,7 @@ pub struct Config {
     wg_workingdir: String,
     wg_interface_name: String,
     monitoring_data_file: String,
+    monitoring_cache_file: String
 }
 
 lazy_static! {

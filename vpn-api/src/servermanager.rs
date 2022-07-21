@@ -2,10 +2,14 @@ use crate::wireguardapi;
 use std::fmt;
 use std::fs::OpenOptions;
 use std::io::{prelude::*, Write};
-
-// pub static SERVER_DUMP_FILE: &'static str = "storage/server_dump.json";
+use std::sync::Mutex;
+use std::collections::HashMap;
 
 use crate::CONFIG;
+
+lazy_static::lazy_static! {
+    pub static ref CACHE: Mutex<HashMap<String, u64>> = Mutex::new(HashMap::new());
+}
 
 #[derive(Debug)]
 pub struct Interface {
@@ -111,6 +115,7 @@ impl Server {
 
     pub fn new_peer(&mut self, info: String) -> String {
         let key_pair = wireguardapi::generate_keys();
+        CACHE.lock().unwrap().insert(key_pair.1.to_owned(), self.clients.len() as u64);
         let c = Client {
             _id: self.clients.len() as u64,
             info: info,
@@ -180,7 +185,11 @@ impl Server {
 
         file.read_to_string(&mut buffer).unwrap();
         let deserialised: Server = serde_json::from_str(&buffer).unwrap();
-        *self = deserialised
+        *self = deserialised;
+
+        for client in &self.clients {
+            CACHE.lock().unwrap().insert(client.public_key.to_string(), client._id);
+        }
     }
 
     pub fn as_interface(&self) -> Interface {

@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use crate::CONFIG;
 
 pub fn generate_keys() -> (String, String) {
-    println!("Generating keypair");
+    println!("Wireguard: Generating keypair");
     let mut process = Command::new("wg")
         .arg("genkey")
         .stdout(Stdio::piped())
@@ -43,7 +43,7 @@ pub fn generate_keys() -> (String, String) {
 }
 
 pub fn dump_config(conf: String) -> () {
-    println!("Dumping server config to WireGuard config");
+    println!("Wireguard: Dumping server config to WireGuard config");
     let mut file = OpenOptions::new()
         .create(true)
         .write(true)
@@ -86,7 +86,7 @@ pub fn sync_config() -> () {
 }
 
 pub fn restart() -> () {
-    println!("Stopping WireGuard");
+    println!("Wireguard: Stopping WireGuard");
     let _process = Command::new("wg-quick")
         .arg("down")
         .arg(CONFIG.wg_interface_name.to_string())
@@ -94,7 +94,7 @@ pub fn restart() -> () {
         .unwrap()
         .wait();
 
-    println!("Starting Wireguard");
+    println!("Wireguard: Starting Wireguard");
     let _process = Command::new("wg-quick")
         .arg("up")
         .arg(CONFIG.wg_interface_name.to_string())
@@ -104,7 +104,7 @@ pub fn restart() -> () {
 }
 
 pub fn get_current_stats() -> BTreeMap<String, (u64, u64)> {
-    println!("Getting data");
+    println!("Wireguard: Getting data");
 
     let mut process = Command::new("wg")
         .arg("show")
