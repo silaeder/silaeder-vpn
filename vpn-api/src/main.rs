@@ -88,7 +88,7 @@ async fn main() {
         .mount(
             "/api/data",
             routes![
-                webinterface::monitoring::get_stats
+                webinterface::monitoring::update_stats
             ]
         )
         // .attach(CORS)

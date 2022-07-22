@@ -151,15 +151,16 @@ pub mod server {
 }
 
 pub mod monitoring {
-    use rocket::response::content;
+    // use rocket::response::content;
 
     use crate::monitoring;
 
-    use crate::servermanager::CACHE;
+    // use crate::servermanager::CACHE;
 
-    #[get("/get_stats")]
-    pub fn get_stats(_token: crate::webinterface::Token) -> content::Json<String> {
-        content::Json(monitoring::get_usage_data())
+    #[get("/update_stats")]
+    pub fn update_stats(_token: crate::webinterface::Token) -> () {
+        // content::Json(monitoring::update_usage_data())
+        monitoring::update_usage_data();
     }
 }
 // #[options("/<_..>")]
