@@ -1,16 +1,16 @@
-use std::fs::OpenOptions;
 use std::collections::{BTreeMap, HashMap};
-use std::time::SystemTime;
-use std::sync::Mutex;
+use std::fs::OpenOptions;
 use std::io::{prelude::*, Write};
 use std::path::Path;
+use std::sync::Mutex;
+use std::time::SystemTime;
 
-use crate::CONFIG;
-use crate::servermanager::CACHE;
 use crate::wireguardapi;
+use crate::CONFIG;
+use crate::SERVER;
 
-type TimeData = HashMap<u64, (u64, u64)>;
-type AllData = BTreeMap<u64, TimeData>;
+pub type TimeData = HashMap<u64, (u64, u64)>;
+pub type AllData = BTreeMap<u64, TimeData>;
 
 lazy_static::lazy_static! {
     pub static ref MONITORING_DATA: Mutex<AllData> = {
@@ -64,16 +64,16 @@ pub fn append_to_file(time: u64, data: TimeData, cache: TimeData) {
     write!(
         file,
         "{}",
-        toml::to_string(&BTreeMap::from([(
-            time.to_string(),
-            {
-                let mut tmp: HashMap<String, (u64, u64)> = HashMap::new();
-                for user in data {
-                    tmp.insert(user.0.to_string(), user.1);
-                }
-                tmp
+        toml::to_string(&BTreeMap::from([(time.to_string(), {
+            let mut tmp: HashMap<String, (u64, u64)> = HashMap::new();
+            for user in data {
+                tmp.insert(user.0.to_string(), user.1);
             }
-        )])).unwrap()).unwrap();
+            tmp
+        })]))
+        .unwrap()
+    )
+    .unwrap();
     let mut file = OpenOptions::new()
         .create(true)
         .append(false)
@@ -84,15 +84,16 @@ pub fn append_to_file(time: u64, data: TimeData, cache: TimeData) {
     write!(
         file,
         "{}",
-        toml::to_string(
-            &{
-                let mut tmp: HashMap<String, (u64, u64)> = HashMap::new();
-                for peer in cache {
-                    tmp.insert(peer.0.to_string(), peer.1);
-                }
-                tmp
+        toml::to_string(&{
+            let mut tmp: HashMap<String, (u64, u64)> = HashMap::new();
+            for peer in cache {
+                tmp.insert(peer.0.to_string(), peer.1);
             }
-        ).unwrap()).unwrap();
+            tmp
+        })
+        .unwrap()
+    )
+    .unwrap();
 }
 
 pub fn append_to_map(time: u64, data: TimeData) -> bool {
@@ -107,12 +108,16 @@ pub fn append_to_map(time: u64, data: TimeData) -> bool {
 pub fn update_usage_data() -> () {
     let raw_data: TimeData = {
         let mut tmp: TimeData = HashMap::new();
+        let lut = SERVER.lock().unwrap().get_peers_public_keys_as_indexies();
         for peer in wireguardapi::get_current_stats() {
-            tmp.insert(*CACHE.lock().unwrap().get(&peer.0).unwrap(), peer.1);
+            tmp.insert(lut[&peer.0], peer.1);
         }
         tmp
     };
-    let time_stamp = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
+    let timestamp = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
     for user in MONITORING_CACHE.lock().unwrap().keys() {
         if !raw_data.contains_key(user) {
             MONITORING_CACHE.lock().unwrap().insert(*user, (0, 0));
@@ -127,15 +132,54 @@ pub fn update_usage_data() -> () {
         if last_usage.0 > raw_data[&user].0 || last_usage.1 > raw_data[&user].1 {
             MONITORING_CACHE.lock().unwrap().insert(user, (0, 0));
         }
-        let new_usage = (raw_data[&user].0 - last_usage.0, raw_data[&user].1 - last_usage.1);
-        MONITORING_CACHE.lock().unwrap().insert(user, raw_data[&user]);
+        let new_usage = (
+            raw_data[&user].0 - last_usage.0,
+            raw_data[&user].1 - last_usage.1,
+        );
+        MONITORING_CACHE
+            .lock()
+            .unwrap()
+            .insert(user, raw_data[&user]);
         data.insert(user, new_usage);
     }
-    if append_to_map(time_stamp.clone(), data.clone()) {
-        append_to_file(time_stamp.clone(), data.clone(), MONITORING_CACHE.lock().unwrap().clone());
+    if append_to_map(timestamp.clone(), data.clone()) {
+        append_to_file(
+            timestamp.clone(),
+            data.clone(),
+            MONITORING_CACHE.lock().unwrap().clone(),
+        );
     };
-    // serde_json::to_string_pretty(&*MONITORING_DATA.lock().unwrap()).unwrap()
-    println!("{:#?}", MONITORING_DATA.lock().unwrap());
+    println!("{:?}", MONITORING_DATA.lock().unwrap());
 }
 
-// pub fn get_usage() -> (HashMap<u64, String>, BTreeMap<String, (u64, u64)>);
+pub fn get_usage(start: u64, end: u64, step: u64) -> (HashMap<u64, String>, AllData) {
+    let mut usage_data = BTreeMap::new();
+    let mut left_time = start;
+    let mut right_time = left_time + step;
+    let mut current_data = HashMap::<u64, (u64, u64)>::new();
+    for (timestamp, uses) in &*MONITORING_DATA.lock().unwrap() {
+        if *timestamp > end {
+            usage_data.insert(left_time, current_data.clone());
+            break;
+        }
+        if *timestamp > left_time {
+            while *timestamp > right_time {
+                usage_data.insert(left_time, current_data.clone());
+                current_data.clear();
+                left_time = right_time;
+                right_time += step;
+            }
+            if *timestamp <= right_time {
+                for (user, usage) in uses {
+                    if !current_data.contains_key(user) {
+                        current_data.insert(*user, *usage);
+                    } else {
+                        let existing = current_data[user];
+                        current_data.insert(*user, (existing.0 + usage.0, existing.1 + usage.1));
+                    }
+                }
+            }
+        }
+    }
+    (SERVER.lock().unwrap().get_peers_indexies_as_info(), usage_data)
+}

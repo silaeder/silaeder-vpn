@@ -1,14 +1,17 @@
-#[macro_use] extern crate rocket;
-#[macro_use] extern crate lazy_static;
+#[macro_use]
+extern crate rocket;
+#[macro_use]
+extern crate lazy_static;
 
+mod monitoring;
 mod servermanager;
 mod webinterface;
 mod wireguardapi;
-mod monitoring;
 
-use std::sync::Mutex;
 use std::fs;
 use std::path::Path;
+use std::sync::Arc;
+use std::sync::Mutex;
 
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
 pub struct Config {
@@ -21,46 +24,47 @@ pub struct Config {
     wg_workingdir: String,
     wg_interface_name: String,
     monitoring_data_file: String,
-    monitoring_cache_file: String
+    monitoring_cache_file: String,
 }
 
 lazy_static! {
-    pub static ref CONFIG: Config = toml::from_str(&fs::read_to_string("VPN.toml").unwrap()).unwrap();
+    pub static ref CONFIG: Config =
+        toml::from_str(&fs::read_to_string("VPN.toml").unwrap()).unwrap();
+    pub static ref SERVER: Arc<Mutex<servermanager::Server>> = {
+        let s: Arc<Mutex<servermanager::Server>>;
+        if !Path::new(&CONFIG.server_dump_file).exists() {
+            let res = wireguardapi::generate_keys();
+            s = Arc::new(Mutex::new(servermanager::Server::new(
+                String::from(&CONFIG.server_port),
+                String::from(&CONFIG.ip_interface_name),
+                res.1,
+                res.0,
+                String::from(&CONFIG.public_address),
+            )));
+        } else {
+            s = Arc::new(Mutex::new(servermanager::Server::empty()));
+            s.lock()
+                .unwrap()
+                .load_from_file(CONFIG.server_dump_file.to_string());
+        }
+        s
+    };
 }
 
 #[rocket::main]
 async fn main() {
-    let s: Mutex<servermanager::Server>;
-
-    if !Path::new(&CONFIG.server_dump_file).exists() {
-        let res = wireguardapi::generate_keys();
-        s = Mutex::new(servermanager::Server::new(
-            String::from(&CONFIG.server_port),
-            String::from(&CONFIG.ip_interface_name),
-            res.1,
-            res.0,
-            String::from(&CONFIG.public_address),
-        ));
-    } else {
-        s = Mutex::new(servermanager::Server::empty());
-        s
-            .lock()
-            .unwrap()
-            .load_from_file(CONFIG.server_dump_file.to_string());
-    }
-
-    wireguardapi::dump_config(s.lock().unwrap().get_server_config());
+    wireguardapi::dump_config(SERVER.lock().unwrap().get_server_config());
     wireguardapi::restart();
 
     let _ = rocket::build()
-        .manage(s)
+        .manage(SERVER.clone())
         .mount(
             // api status page
             "/api",
             routes![
                 webinterface::index,
                 // webinterface::send_options
-            ]
+            ],
         )
         .mount(
             // wireguard api
@@ -76,7 +80,8 @@ async fn main() {
             // server info manager
             "/api/manage",
             routes![
-                webinterface::server::new_peer,
+                webinterface::server::new_peer_info,
+                webinterface::server::new_peer_no_info,
                 webinterface::server::get_server_config,
                 webinterface::server::get_client_config_by_id,
                 webinterface::server::get_client_config_by_info,
@@ -88,8 +93,10 @@ async fn main() {
         .mount(
             "/api/data",
             routes![
-                webinterface::monitoring::update_stats
-            ]
+                webinterface::monitoring::update_stats,
+                webinterface::monitoring::get_stats_last,
+                webinterface::monitoring::get_stats_period
+            ],
         )
         // .attach(CORS)
         .launch()

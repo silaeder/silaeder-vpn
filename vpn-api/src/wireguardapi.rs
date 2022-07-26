@@ -1,7 +1,7 @@
+use std::collections::BTreeMap;
 use std::fs::OpenOptions;
 use std::io::{prelude::*, Write};
 use std::process::{Command, Stdio};
-use std::collections::BTreeMap;
 
 use crate::CONFIG;
 
@@ -14,7 +14,12 @@ pub fn generate_keys() -> (String, String) {
         .unwrap();
 
     let mut buffer = String::new();
-    process.stdout.take().unwrap().read_to_string(&mut buffer).unwrap();
+    process
+        .stdout
+        .take()
+        .unwrap()
+        .read_to_string(&mut buffer)
+        .unwrap();
     process.wait().unwrap();
     let mut private_key = buffer.clone();
     private_key.pop();
@@ -34,7 +39,12 @@ pub fn generate_keys() -> (String, String) {
         .unwrap();
 
     let mut buffer = String::new();
-    process.stdout.take().unwrap().read_to_string(&mut buffer).unwrap();
+    process
+        .stdout
+        .take()
+        .unwrap()
+        .read_to_string(&mut buffer)
+        .unwrap();
     process.wait().unwrap();
     let mut public_key = buffer.clone();
     public_key.pop();
@@ -48,7 +58,10 @@ pub fn dump_config(conf: String) -> () {
         .create(true)
         .write(true)
         .truncate(true)
-        .open(format!("{}/{}.conf", CONFIG.wg_workingdir, CONFIG.wg_interface_name))
+        .open(format!(
+            "{}/{}.conf",
+            CONFIG.wg_workingdir, CONFIG.wg_interface_name
+        ))
         .unwrap();
 
     writeln!(file, "{}", conf).unwrap();
@@ -115,7 +128,12 @@ pub fn get_current_stats() -> BTreeMap<String, (u64, u64)> {
         .unwrap();
 
     let mut buffer = String::new();
-    process.stdout.take().unwrap().read_to_string(&mut buffer).unwrap();
+    process
+        .stdout
+        .take()
+        .unwrap()
+        .read_to_string(&mut buffer)
+        .unwrap();
     process.wait().unwrap();
     buffer.pop();
 
@@ -123,7 +141,10 @@ pub fn get_current_stats() -> BTreeMap<String, (u64, u64)> {
 
     for peer in buffer.split('\n') {
         let parts: Vec<&str> = peer.split("\t").collect();
-        data.insert(parts[0].to_string(), (parts[1].parse().unwrap(), parts[2].parse().unwrap()));
+        data.insert(
+            parts[0].to_string(),
+            (parts[1].parse().unwrap(), parts[2].parse().unwrap()),
+        );
     }
 
     data

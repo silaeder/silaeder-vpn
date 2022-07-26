@@ -1,15 +1,10 @@
 use crate::wireguardapi;
+use std::collections::HashMap;
 use std::fmt;
 use std::fs::OpenOptions;
 use std::io::{prelude::*, Write};
-use std::sync::Mutex;
-use std::collections::HashMap;
 
 use crate::CONFIG;
-
-lazy_static::lazy_static! {
-    pub static ref CACHE: Mutex<HashMap<String, u64>> = Mutex::new(HashMap::new());
-}
 
 #[derive(Debug)]
 pub struct Interface {
@@ -103,7 +98,7 @@ impl Server {
     }
 
     pub fn empty() -> Server {
-        Server{
+        Server {
             port: String::new(),
             nic: String::new(),
             public_key: String::new(),
@@ -115,7 +110,6 @@ impl Server {
 
     pub fn new_peer(&mut self, info: String) -> String {
         let key_pair = wireguardapi::generate_keys();
-        CACHE.lock().unwrap().insert(key_pair.1.to_owned(), self.clients.len() as u64);
         let c = Client {
             _id: self.clients.len() as u64,
             info: info,
@@ -126,6 +120,22 @@ impl Server {
         self.clients.push(c);
         self.dump_to_file(CONFIG.server_dump_file.to_string());
         self.get_client_config_by_id(self.clients.len() - 1)
+    }
+
+    pub fn get_peers_public_keys_as_indexies(&self) -> HashMap<String, u64> {
+        let mut map: HashMap<String, u64> = HashMap::new();
+        for client in &self.clients {
+            map.insert(client.public_key.to_string(), client._id);
+        }
+        map
+    }
+
+    pub fn get_peers_indexies_as_info(&self) -> HashMap<u64, String> {
+        let mut map: HashMap<u64, String> = HashMap::new();
+        for client in &self.clients {
+            map.insert(client._id, client.info.to_string());
+        }
+        map
     }
 
     pub fn get_server_config(&self) -> String {
@@ -158,10 +168,10 @@ impl Server {
                 result.push_str("\n");
                 result.push_str(&self.as_peer().to_string());
                 result.push_str("\n");
-                return result
+                return result;
             }
         }
-        return "".to_string()
+        return "".to_string();
     }
 
     pub fn dump_to_json(&self) -> String {
@@ -186,10 +196,6 @@ impl Server {
         file.read_to_string(&mut buffer).unwrap();
         let deserialised: Server = serde_json::from_str(&buffer).unwrap();
         *self = deserialised;
-
-        for client in &self.clients {
-            CACHE.lock().unwrap().insert(client.public_key.to_string(), client._id);
-        }
     }
 
     pub fn as_interface(&self) -> Interface {
