@@ -149,7 +149,6 @@ pub fn update_usage_data() -> () {
             MONITORING_CACHE.lock().unwrap().clone(),
         );
     };
-    println!("{:?}", MONITORING_DATA.lock().unwrap());
 }
 
 pub fn get_usage(start: u64, end: u64, step: u64) -> (HashMap<u64, String>, AllData) {
